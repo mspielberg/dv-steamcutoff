@@ -39,11 +39,37 @@ namespace SteamCutoff
             return true;
         }
 
+        static float frameStart = 0;
+
+        static void MaybeLog(String message)
+        {
+            float currentFrameStart = Time.time;
+            if (currentFrameStart == frameStart || currentFrameStart > frameStart + 1)
+            {
+                mod.Logger.Log(message);
+                frameStart = currentFrameStart;
+            }
+        }
+
+        [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateSteam")]
+        static class SimulateSteamPatch
+        {
+            static void Postfix(SteamLocoSimulation __instance)
+            {
+                float before = __instance.boilerPressure.value;
+                float after = __instance.boilerPressure.nextValue;
+                if (after > before)
+                {
+                    float newPressure = Mathf.Lerp(before, after, 0.5f);
+                    MaybeLog($"Loco {__instance.GetInstanceID()}: Adjusting boiler pressure from {after} to {newPressure}");
+                    __instance.boilerPressure.SetNextValue(newPressure);
+                }
+            }
+        }
+
         [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateCylinder")]
         static class SimulateCylinderPatch
         {
-            static UInt64 frame = 0;
-
             static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
             {
                 if (Main.enabled)
@@ -58,8 +84,7 @@ namespace SteamCutoff
                             float injectionPower = pressureRatio * cutoff;
                             float expansionPower = (float)(pressureRatio * cutoff * -Math.Log(cutoff));
                             __instance.power.SetNextValue(injectionPower + expansionPower);
-                            if (++frame % 60 == 0)
-                                mod.Logger.Log($"cutoff = {cutoff}; injectionPower = {injectionPower}; expansionPower = {expansionPower}; total = {__instance.power.nextValue}");
+                            MaybeLog($"Loco {__instance.GetInstanceID()}: cutoff = {cutoff}; injectionPower = {injectionPower}; expansionPower = {expansionPower}; total = {__instance.power.nextValue}");
 
                             // USRA Light Mikado
                             // cylinder displacement = 262L
@@ -72,8 +97,7 @@ namespace SteamCutoff
                             float boilerSteamVolume = SteamLocoSimulation.BOILER_WATER_CAPACITY_L * 1.05f - __instance.boilerWater.value;
                             float pressureConsumed = __instance.boilerPressure.value * boilerSteamVolumeConsumed / boilerSteamVolume;
                             __instance.boilerPressure.AddNextValue(-pressureConsumed);
-                            if (frame % 60 == 0)
-                                mod.Logger.Log($"boilerSteamVolumeConsumed = {boilerSteamVolumeConsumed}; boilerSteamVolume = {boilerSteamVolume}; pressureConsumed = {pressureConsumed}");
+                            MaybeLog($"Loco {__instance.GetInstanceID()}: boilerSteamVolumeConsumed = {boilerSteamVolumeConsumed}; boilerSteamVolume = {boilerSteamVolume}; pressureConsumed = {pressureConsumed}");
                         }
                         return false;
                     }
@@ -84,8 +108,7 @@ namespace SteamCutoff
                 }
                 else
                 {
-                    if (frame++ % 60 == 0)
-                        mod.Logger.Log($"cutoff = {__instance.cutoff.value}; injectionPower = {__instance.power.value}");
+                    MaybeLog($"Loco {__instance.GetInstanceID()}: cutoff = {__instance.cutoff.value}; injectionPower = {__instance.power.value}");
                 }
                 return true;
             }
