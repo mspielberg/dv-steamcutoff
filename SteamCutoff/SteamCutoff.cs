@@ -9,6 +9,7 @@ namespace SteamCutoff
     static class Main
     {
         public static bool enabled;
+        public static bool loggingEnabled;
         public static UnityModManager.ModEntry mod;
 
         static bool Load(UnityModManager.ModEntry modEntry)
@@ -17,10 +18,16 @@ namespace SteamCutoff
             harmony.PatchAll();
 
             mod = modEntry;
+            modEntry.OnGUI = OnGui;
             modEntry.OnToggle = OnToggle;
             modEntry.OnUnload = OnUnload;
 
             return true;
+        }
+
+        static void OnGui(UnityModManager.ModEntry modEntry)
+        {
+            loggingEnabled = GUILayout.Toggle(loggingEnabled, "enable logging");
         }
 
         static bool OnToggle(UnityModManager.ModEntry modEntry, bool value)
