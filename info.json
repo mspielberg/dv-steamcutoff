@@ -1,0 +1,10 @@
+{
+  "Id": "SteamCutoff",
+  "DisplayName": "Steam Cutoff",
+  "Author": "Zeibach",
+  "Version": "0.2.0",
+  "AssemblyName": "SteamCutoff.dll",
+  "EntryMethod": "SteamCutoff.Main.Load",
+  "HomePage": "https://www.nexusmods.com/derailvalley/mods/192",
+  "Repository": "https://raw.githubusercontent.com/mspielberg/dv-steamcutoff/master/respository.json"
+}
