@@ -9,16 +9,19 @@ namespace SteamCutoff
     static class Main
     {
         public static bool enabled;
-        public static bool loggingEnabled;
+        public static Settings settings;
         public static UnityModManager.ModEntry mod;
 
         static bool Load(UnityModManager.ModEntry modEntry)
         {
+            mod = modEntry;
+
+            try { settings = Settings.Load<Settings>(modEntry); } catch {}
             var harmony = new Harmony(modEntry.Info.Id);
             harmony.PatchAll();
 
-            mod = modEntry;
             modEntry.OnGUI = OnGui;
+            modEntry.OnSaveGUI = OnSaveGui;
             modEntry.OnToggle = OnToggle;
             modEntry.OnUnload = OnUnload;
 
@@ -27,7 +30,12 @@ namespace SteamCutoff
 
         static void OnGui(UnityModManager.ModEntry modEntry)
         {
-            loggingEnabled = GUILayout.Toggle(loggingEnabled, "enable logging");
+            settings.Draw(modEntry);
+        }
+
+        static void OnSaveGui(UnityModManager.ModEntry modEntry)
+        {
+            settings.Save(modEntry);
         }
 
         static bool OnToggle(UnityModManager.ModEntry modEntry, bool value)
@@ -46,6 +54,12 @@ namespace SteamCutoff
             return true;
         }
 
+        static void DebugLog(String message)
+        {
+            if (settings.enableLogging)
+                mod.Logger.Log(message);
+        }
+
         static float frameStart = 0;
 
         static void MaybeLog(String message)
@@ -53,9 +67,21 @@ namespace SteamCutoff
             float currentFrameStart = Time.time;
             if (currentFrameStart == frameStart || currentFrameStart > frameStart + 1)
             {
-                mod.Logger.Log(message);
+                DebugLog(message);
                 frameStart = currentFrameStart;
             }
+        }
+
+        public class Settings : UnityModManager.ModSettings, IDrawable
+        {
+            [Draw("Boiler steam generation rate")] public float steamGenerationRate = 0.5f;
+            [Draw("Enable logging")] public bool enableLogging = false;
+
+            override public void Save(UnityModManager.ModEntry entry) {
+                Save<Settings>(this, entry);
+            }
+
+            public void OnChange() {}
         }
 
         [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateSteam")]
@@ -63,12 +89,15 @@ namespace SteamCutoff
         {
             static void Postfix(SteamLocoSimulation __instance)
             {
+                var id = __instance.GetComponent<TrainCar>().ID;
                 float before = __instance.boilerPressure.value;
                 float after = __instance.boilerPressure.nextValue;
                 if (after > before)
                 {
-                    float newPressure = Mathf.Lerp(before, after, 0.5f);
-                    MaybeLog($"Loco {__instance.GetInstanceID()}: Adjusting boiler pressure from {after} to {newPressure}");
+                    float pressureGain = after - before;
+                    float adjustedGain = pressureGain * settings.steamGenerationRate;
+                    float newPressure = before + adjustedGain;
+                    MaybeLog($"{id}: Adjusting steam gain from {pressureGain} to {adjustedGain}");
                     __instance.boilerPressure.SetNextValue(newPressure);
                 }
             }
@@ -79,6 +108,7 @@ namespace SteamCutoff
         {
             static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
             {
+                var id = __instance.GetComponent<TrainCar>().ID;
                 if (Main.enabled)
                 {
                     try
@@ -91,7 +121,7 @@ namespace SteamCutoff
                             float injectionPower = pressureRatio * cutoff;
                             float expansionPower = (float)(pressureRatio * cutoff * -Math.Log(cutoff));
                             __instance.power.SetNextValue(injectionPower + expansionPower);
-                            MaybeLog($"Loco {__instance.GetInstanceID()}: cutoff = {cutoff}; injectionPower = {injectionPower}; expansionPower = {expansionPower}; total = {__instance.power.nextValue}");
+                            MaybeLog($"{id}: cutoff = {cutoff}; injectionPower = {injectionPower}; expansionPower = {expansionPower}; total = {__instance.power.nextValue}");
 
                             // USRA Light Mikado
                             // cylinder displacement = 262L
@@ -104,7 +134,7 @@ namespace SteamCutoff
                             float boilerSteamVolume = SteamLocoSimulation.BOILER_WATER_CAPACITY_L * 1.05f - __instance.boilerWater.value;
                             float pressureConsumed = __instance.boilerPressure.value * boilerSteamVolumeConsumed / boilerSteamVolume;
                             __instance.boilerPressure.AddNextValue(-pressureConsumed);
-                            MaybeLog($"Loco {__instance.GetInstanceID()}: boilerSteamVolumeConsumed = {boilerSteamVolumeConsumed}; boilerSteamVolume = {boilerSteamVolume}; pressureConsumed = {pressureConsumed}");
+                            MaybeLog($"{id}: boilerSteamVolumeConsumed = {boilerSteamVolumeConsumed}; boilerSteamVolume = {boilerSteamVolume}; pressureConsumed = {pressureConsumed}");
                         }
                         return false;
                     }
@@ -115,7 +145,7 @@ namespace SteamCutoff
                 }
                 else
                 {
-                    MaybeLog($"Loco {__instance.GetInstanceID()}: cutoff = {__instance.cutoff.value}; injectionPower = {__instance.power.value}");
+                    MaybeLog($"{id}: cutoff = {__instance.cutoff.value}; injectionPower = {__instance.power.value}");
                 }
                 return true;
             }
