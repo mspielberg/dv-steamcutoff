@@ -11,6 +11,7 @@ namespace SteamCutoff
         public static bool enabled;
         public static Settings settings;
         public static UnityModManager.ModEntry mod;
+        public static GameObject behaviourRoot;
 
         static bool Load(UnityModManager.ModEntry modEntry)
         {
@@ -24,7 +25,9 @@ namespace SteamCutoff
             modEntry.OnSaveGUI = OnSaveGui;
             modEntry.OnToggle = OnToggle;
             modEntry.OnUnload = OnUnload;
-            modEntry.OnUpdate = OnUpdate;
+
+            behaviourRoot = new GameObject();
+            behaviourRoot.AddComponent<Overlay>();
 
             return true;
         }
@@ -50,38 +53,19 @@ namespace SteamCutoff
 
         static bool OnUnload(UnityModManager.ModEntry modEntry)
         {
+            GameObject.Destroy(behaviourRoot);
+            behaviourRoot = null;
             var harmony = new Harmony(modEntry.Info.Id);
             harmony.UnpatchAll(modEntry.Info.Id);
             return true;
         }
 
-        static class Monitor
-        {
-            public static float steamUsage;
-            public static float tractionForce;
-            public static float cutoffSetting;
-
-            public static float lastLogTime;
-        }
-
-        static void OnUpdate(UnityModManager.ModEntry modEntry, float deltaTime)
-        {
-            if (!settings.enableLogging)
-                return;
-
-            if (Time.time > Monitor.lastLogTime + 1f)
-            {
-                Monitor.lastLogTime = Time.time;
-                modEntry.Logger.Log($"cutoff = {(int)(Monitor.cutoffSetting * 100)}%; steamUsage = {Monitor.steamUsage} mbar/s; tractionForce = {(int)(Monitor.tractionForce / 1000)} kN");
-                Monitor.steamUsage = 0;
-            }
-        }
-
         public class Settings : UnityModManager.ModSettings, IDrawable
         {
             [Draw("Boiler steam generation rate")] public float steamGenerationRate = 0.5f;
-            [Draw("Enable logging")] public bool enableLogging = false;
             [Draw("Cutoff wheel gamma")] public float cutoffGamma = 1.9f;
+            [Draw("Enable logging")] public bool enableLogging = false;
+            [Draw("Show info overlay")] public bool showInfoOverlay = false;
 
             override public void Save(UnityModManager.ModEntry entry) {
                 Save<Settings>(this, entry);
@@ -99,16 +83,16 @@ namespace SteamCutoff
             {
                 var car = __instance.GetComponent<TrainCar>();
                 if (car == PlayerManager.LastLoco)
-                    Monitor.tractionForce = __result;
+                    Overlay.instance.tractionForce = __result;
             }
         }
 
         [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateSteam")]
         static class SimulateSteamPatch
         {
-            static void Postfix(SteamLocoSimulation __instance)
+            static void Postfix(SteamLocoSimulation __instance, float deltaTime)
             {
-                var id = __instance.GetComponent<TrainCar>().ID;
+                var loco = __instance.GetComponent<TrainCar>();
                 float before = __instance.boilerPressure.value;
                 float after = __instance.boilerPressure.nextValue;
                 if (after > before)
@@ -117,6 +101,8 @@ namespace SteamCutoff
                     float adjustedGain = pressureGain * settings.steamGenerationRate;
                     float newPressure = before + adjustedGain;
                     __instance.boilerPressure.SetNextValue(newPressure);
+                    if (deltaTime > 0 && loco == PlayerManager.LastLoco)
+                        Overlay.instance.UpdateSteamGeneration(adjustedGain / deltaTime * __instance.timeMult);
                 }
             }
         }
@@ -133,13 +119,13 @@ namespace SteamCutoff
                     {
                         float cutoff = Mathf.Pow(__instance.cutoff.value, settings.cutoffGamma) * 0.85f;
                         if (loco == PlayerManager.LastLoco)
-                            Monitor.cutoffSetting = cutoff;
+                            Overlay.instance.cutoffSetting = cutoff;
                         if (cutoff > 0)
                         {
                             float steamChestPressure = __instance.boilerPressure.value * __instance.regulator.value;
                             float pressureRatio = steamChestPressure / SteamLocoSimulation.BOILER_PRESSURE_MAX_KG_PER_SQR_CM * SteamLocoSimulation.POWER_CONST_HP;
                             float injectionPower = pressureRatio * cutoff;
-                            float expansionPower = (float)(pressureRatio * cutoff * -Math.Log(cutoff));
+                            float expansionPower = (float)(pressureRatio * cutoff * -Mathf.Log(cutoff));
                             __instance.power.SetNextValue(injectionPower + expansionPower);
 
                             // USRA Light Mikado
@@ -153,8 +139,8 @@ namespace SteamCutoff
                             float boilerSteamVolume = SteamLocoSimulation.BOILER_WATER_CAPACITY_L * 1.05f - __instance.boilerWater.value;
                             float pressureConsumed = __instance.boilerPressure.value * boilerSteamVolumeConsumed / boilerSteamVolume;
                             __instance.boilerPressure.AddNextValue(-pressureConsumed);
-                            if (loco == PlayerManager.LastLoco)
-                                Monitor.steamUsage += pressureConsumed * 1000;
+                            if (deltaTime > 0 && loco == PlayerManager.LastLoco)
+                                Overlay.instance.UpdateSteamUsage(pressureConsumed / deltaTime * __instance.timeMult);
                         }
                         return false;
                     }
