@@ -2,7 +2,7 @@
   "Id": "SteamCutoff",
   "DisplayName": "Steam Cutoff",
   "Author": "Zeibach",
-  "Version": "0.2.0",
+  "Version": "0.3.0",
   "AssemblyName": "SteamCutoff.dll",
   "EntryMethod": "SteamCutoff.Main.Load",
   "HomePage": "https://www.nexusmods.com/derailvalley/mods/192",

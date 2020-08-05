@@ -1,6 +1,7 @@
 {
   "Releases":
   [
+      {"Id": "SteamCutoff", "Version": "0.3.0", "DownloadUrl": "https://github.com/mspielberg/dv-steamcutoff/releases/download/v0.3.0/SteamCutoff_0.3.0.zip"},
       {"Id": "SteamCutoff", "Version": "0.2.0", "DownloadUrl": "https://github.com/mspielberg/dv-steamcutoff/releases/download/v0.2.0/SteamCutoff_0.2.0.zip"},
       {"Id": "SteamCutoff", "Version": "0.1.0", "DownloadUrl": "https://github.com/mspielberg/dv-steamcutoff/releases/download/v0.1.0/SteamCutoff_0.1.0.zip"}
   ]
