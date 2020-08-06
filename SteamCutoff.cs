@@ -69,6 +69,11 @@ namespace SteamCutoff
             return true;
         }
 
+        static float BoilerSteamVolume(float boilerWater)
+        {
+            return SteamLocoSimulation.BOILER_WATER_CAPACITY_L * 1.05f - boilerWater;
+        }
+
         public class Settings : UnityModManager.ModSettings, IDrawable
         {
             [Draw("Boiler steam generation rate")] public float steamGenerationRate = 0.5f;
@@ -97,6 +102,19 @@ namespace SteamCutoff
                     var inclination = car.transform.localEulerAngles.x;
                     Overlay.instance.UpdateInclination(inclination > 180 ? 360f - inclination : -inclination);
                 }
+            }
+        }
+
+        [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateWater")]
+        static class SimulateWaterPatch
+        {
+            static void Postfix(SteamLocoSimulation __instance)
+            {
+                if (!Main.enabled)
+                    return;
+                float steamVolumeBefore = BoilerSteamVolume(__instance.boilerWater.value);
+                float steamVolumeAfter = BoilerSteamVolume(__instance.boilerWater.nextValue);
+                __instance.boilerPressure.SetValue(__instance.boilerPressure.value * steamVolumeBefore / steamVolumeAfter);
             }
         }
 
@@ -149,7 +167,7 @@ namespace SteamCutoff
                             // (~0.25 strokes / s) / (km/h)
                             float cylinderSteamVolumeConsumed = __instance.speed.value * 0.25f * 262f * cutoff * deltaTime;
                             float boilerSteamVolumeConsumed = cylinderSteamVolumeConsumed * __instance.regulator.value;
-                            float boilerSteamVolume = SteamLocoSimulation.BOILER_WATER_CAPACITY_L * 1.05f - __instance.boilerWater.value;
+                            float boilerSteamVolume = BoilerSteamVolume(__instance.boilerWater.value);
                             float pressureConsumed = __instance.boilerPressure.value * boilerSteamVolumeConsumed / boilerSteamVolume;
                             __instance.boilerPressure.AddNextValue(-pressureConsumed);
                             if (deltaTime > 0 && loco == PlayerManager.LastLoco)
