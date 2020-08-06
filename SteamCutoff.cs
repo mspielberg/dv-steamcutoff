@@ -141,6 +141,46 @@ namespace SteamCutoff
         [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateCylinder")]
         static class SimulateCylinderPatch
         {
+            const float INSTANTANEOUS_THRESHOLD_KPH = 0f;
+            const float AVERAGE_THRESHOLD_KPH = 10f;
+
+            const float SINUSOID_AVERAGE = 2f / Mathf.PI;
+            static float InstantaneousCylinderPowerRatio(float cutoff, float pistonPosition)
+            {
+                float pressureRatio = pistonPosition <= cutoff ? 1f : cutoff / pistonPosition;
+                float angleRatio = Mathf.Sin(Mathf.PI * pistonPosition) / SINUSOID_AVERAGE;
+                return pressureRatio * angleRatio;
+            }
+
+            // Assume: cyl2 is leading cyl1 by 90 degrees (0.25 rotation)
+            // Piston position moves through 1 stroke every 0.5 rotation
+            // 0 <= rotation < 0.25
+            //    cyl1 acting forward, position = rotation * 2
+            //    cyl2 acting forward, position = (rotation + 0.25) * 2
+            // 0.25 <= rotation < 0.5
+            //    cyl1 acting forward, position = rotation * 2
+            //    cyl2 acting backward, position = (rotation + 0.25) % 0.5 * 2
+            // 0.5 <= rotation < 0.75
+            //    cyl1 acting backward, position = (rotation - 0.5) * 2
+            //    cyl2 acting backward, position = (rotation - 0.25) * 2
+            // 0.75 <= rotation < 1
+            //    cyl1 acting backward, position = (rotation - 0.5) * 2
+            //    cyl2 acting forward, position = (rotation - 0.75) * 2
+            static float InstantaneousPowerRatio(float cutoff, float rotation)
+            {
+                float pistonPosition1 = rotation % 0.5f * 2f;
+                float pistonPosition2 = (rotation + 0.25f) % 0.5f * 2f;
+                return InstantaneousCylinderPowerRatio(cutoff, pistonPosition1) +
+                    InstantaneousCylinderPowerRatio(cutoff, pistonPosition2);
+            }
+
+            static float AveragePowerRatio(float cutoff)
+            {
+                float injectionPower = cutoff;
+                float expansionPower = cutoff * -Mathf.Log(cutoff);
+                return injectionPower + expansionPower;
+            }
+
             static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
             {
                 var loco = __instance.GetComponent<TrainCar>();
@@ -153,24 +193,17 @@ namespace SteamCutoff
                             Overlay.instance.cutoffSetting = cutoff;
                         if (cutoff > 0)
                         {
-                            float steamChestPressure = __instance.boilerPressure.value * __instance.regulator.value;
-                            float pressureRatio = steamChestPressure / SteamLocoSimulation.BOILER_PRESSURE_MAX_KG_PER_SQR_CM * SteamLocoSimulation.POWER_CONST_HP;
-                            float injectionPower = pressureRatio * cutoff;
-                            float expansionPower = pressureRatio * cutoff * -Mathf.Log(cutoff);
+                            float boilerPressureRatio =
+                                __instance.boilerPressure.value / SteamLocoSimulation.BOILER_PRESSURE_MAX_KG_PER_SQR_CM;
+                            float steamChestPressureRatio = boilerPressureRatio * __instance.regulator.value;
 
-                            if (__instance.speed.value < 5f) {
-                                // model jerkiness with revolutions
-                                var chuff = __instance.GetComponent<ChuffController>();
-                                if (chuff.dbgCurrentRevolution % (1f / 4f) > cutoff) {
-                                    // within area where all intake valves are closed
-                                    return false;
-                                } else {
-                                    // full pressure acting on piston
-                                    __instance.power.SetNextValue(pressureRatio);
-                                }
-                            }
-                            else
-                                __instance.power.SetNextValue(injectionPower + expansionPower);
+                            var chuff = __instance.GetComponent<ChuffController>();
+                            float powerRatio = Mathf.Lerp(
+                                InstantaneousPowerRatio(cutoff, chuff.dbgCurrentRevolution),
+                                AveragePowerRatio(cutoff),
+                                (__instance.speed.value - INSTANTANEOUS_THRESHOLD_KPH) /
+                                    (AVERAGE_THRESHOLD_KPH - INSTANTANEOUS_THRESHOLD_KPH));
+                            __instance.power.SetNextValue(steamChestPressureRatio * powerRatio * SteamLocoSimulation.POWER_CONST_HP);
 
                             // USRA Light Mikado
                             // cylinder displacement = 262L
