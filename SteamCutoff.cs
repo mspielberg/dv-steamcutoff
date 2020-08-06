@@ -156,8 +156,21 @@ namespace SteamCutoff
                             float steamChestPressure = __instance.boilerPressure.value * __instance.regulator.value;
                             float pressureRatio = steamChestPressure / SteamLocoSimulation.BOILER_PRESSURE_MAX_KG_PER_SQR_CM * SteamLocoSimulation.POWER_CONST_HP;
                             float injectionPower = pressureRatio * cutoff;
-                            float expansionPower = (float)(pressureRatio * cutoff * -Mathf.Log(cutoff));
-                            __instance.power.SetNextValue(injectionPower + expansionPower);
+                            float expansionPower = pressureRatio * cutoff * -Mathf.Log(cutoff);
+
+                            if (__instance.speed.value < 5f) {
+                                // model jerkiness with revolutions
+                                var chuff = __instance.GetComponent<ChuffController>();
+                                if (chuff.dbgCurrentRevolution % (1f / 4f) > cutoff) {
+                                    // within area where all intake valves are closed
+                                    return false;
+                                } else {
+                                    // full pressure acting on piston
+                                    __instance.power.SetNextValue(pressureRatio);
+                                }
+                            }
+                            else
+                                __instance.power.SetNextValue(injectionPower + expansionPower);
 
                             // USRA Light Mikado
                             // cylinder displacement = 262L
