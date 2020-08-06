@@ -83,7 +83,11 @@ namespace SteamCutoff
             {
                 var car = __instance.GetComponent<TrainCar>();
                 if (car == PlayerManager.LastLoco)
+                {
                     Overlay.instance.tractionForce = __result;
+                    var inclination = car.transform.localEulerAngles.x;
+                    Overlay.instance.UpdateInclination(inclination > 180 ? 360f - inclination : -inclination);
+                }
             }
         }
 
