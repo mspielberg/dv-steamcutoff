@@ -26,8 +26,10 @@ namespace SteamCutoff
             modEntry.OnToggle = OnToggle;
             modEntry.OnUnload = OnUnload;
 
-            behaviourRoot = new GameObject();
-            behaviourRoot.AddComponent<Overlay>();
+            if (WorldStreamingInit.IsLoaded)
+                OnLoadingFinished();
+            else
+                WorldStreamingInit.LoadingFinished += OnLoadingFinished;
 
             return true;
         }
@@ -51,9 +53,16 @@ namespace SteamCutoff
             return true;
         }
 
+        static void OnLoadingFinished()
+        {
+            behaviourRoot = new GameObject();
+            behaviourRoot.AddComponent<Overlay>();
+        }
+
         static bool OnUnload(UnityModManager.ModEntry modEntry)
         {
-            GameObject.Destroy(behaviourRoot);
+            if (behaviourRoot != null)
+                GameObject.Destroy(behaviourRoot);
             behaviourRoot = null;
             var harmony = new Harmony(modEntry.Info.Id);
             harmony.UnpatchAll(modEntry.Info.Id);
