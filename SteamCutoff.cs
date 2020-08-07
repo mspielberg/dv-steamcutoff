@@ -26,7 +26,7 @@ namespace SteamCutoff
             modEntry.OnToggle = OnToggle;
             modEntry.OnUnload = OnUnload;
 
-            if (WorldStreamingInit.IsLoaded)
+            if (SaveLoadController.carsAndJobsLoadingFinished && WorldStreamingInit.IsLoaded)
                 OnLoadingFinished();
             else
                 WorldStreamingInit.LoadingFinished += OnLoadingFinished;
