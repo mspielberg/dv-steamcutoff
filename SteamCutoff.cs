@@ -74,10 +74,17 @@ namespace SteamCutoff
             return SteamLocoSimulation.BOILER_WATER_CAPACITY_L * 1.05f - boilerWater;
         }
 
+        public static void DebugLog(string message)
+        {
+            if (settings.enableLogging)
+                mod.Logger.Log(message);
+        }
+
         public class Settings : UnityModManager.ModSettings, IDrawable
         {
             [Draw("Boiler steam generation rate")] public float steamGenerationRate = 0.5f;
             [Draw("Cutoff wheel gamma")] public float cutoffGamma = 1.9f;
+            [Draw("Max boiler pressure")] public float safetyValveThreshold = 16f;
             [Draw("Enable logging")] public bool enableLogging = false;
             [Draw("Show info overlay")] public bool showInfoOverlay = false;
 
@@ -87,6 +94,7 @@ namespace SteamCutoff
 
             public void OnChange() {
                 cutoffGamma = Mathf.Max(cutoffGamma, 0.1f);
+                safetyValveThreshold = Mathf.Clamp(safetyValveThreshold, 0f, 20f);
             }
         }
 
