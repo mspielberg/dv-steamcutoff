@@ -85,6 +85,13 @@ namespace SteamCutoff
             [Draw("Boiler steam generation rate")] public float steamGenerationRate = 0.5f;
             [Draw("Cutoff wheel gamma")] public float cutoffGamma = 1.9f;
             [Draw("Max boiler pressure")] public float safetyValveThreshold = 16f;
+
+            [Draw("Enable detailed low-speed simulation")] public bool enableLowSpeedSimulation = true;
+            [Draw("Low-speed simulation transition start", VisibleOn = "enableLowSpeedSimulation|true")]
+            public float lowSpeedTransitionStart = 10f;
+            [Draw("Low-speed simulation transition width", VisibleOn = "enableLowSpeedSimulation|true")]
+            public float lowSpeedTransitionWidth = 5f;
+
             [Draw("Enable logging")] public bool enableLogging = false;
             [Draw("Show info overlay")] public bool showInfoOverlay = false;
 
@@ -149,9 +156,6 @@ namespace SteamCutoff
         [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateCylinder")]
         static class SimulateCylinderPatch
         {
-            const float INSTANTANEOUS_THRESHOLD_KPH = 0f;
-            const float AVERAGE_THRESHOLD_KPH = 10f;
-
             const float SINUSOID_AVERAGE = 2f / Mathf.PI;
             static float InstantaneousCylinderPowerRatio(float cutoff, float pistonPosition)
             {
@@ -189,6 +193,18 @@ namespace SteamCutoff
                 return injectionPower + expansionPower;
             }
 
+            static float PowerRatio(float cutoff, float speed, float revolution)
+            {
+                if (!settings.enableLowSpeedSimulation)
+                    return AveragePowerRatio(cutoff);
+
+                return Mathf.Lerp(
+                        InstantaneousPowerRatio(cutoff, revolution),
+                        AveragePowerRatio(cutoff),
+                        (speed - settings.lowSpeedTransitionStart) /
+                            settings.lowSpeedTransitionWidth);
+            }
+
             static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
             {
                 var loco = __instance.GetComponent<TrainCar>();
@@ -206,11 +222,7 @@ namespace SteamCutoff
                             float steamChestPressureRatio = boilerPressureRatio * __instance.regulator.value;
 
                             var chuff = __instance.GetComponent<ChuffController>();
-                            float powerRatio = Mathf.Lerp(
-                                InstantaneousPowerRatio(cutoff, chuff.dbgCurrentRevolution),
-                                AveragePowerRatio(cutoff),
-                                (__instance.speed.value - INSTANTANEOUS_THRESHOLD_KPH) /
-                                    (AVERAGE_THRESHOLD_KPH - INSTANTANEOUS_THRESHOLD_KPH));
+                            float powerRatio = PowerRatio(cutoff, __instance.speed.value, chuff.dbgCurrentRevolution);
                             __instance.power.SetNextValue(steamChestPressureRatio * powerRatio * SteamLocoSimulation.POWER_CONST_HP);
 
                             // USRA Light Mikado

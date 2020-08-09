@@ -1,25 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net48</TargetFramework>
+    <TargetFramework>net472</TargetFramework>
     <RootNamespace>SteamCutoff</RootNamespace>
     <InformationalVersion>v0.3.0</InformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>
-    <Reference Include="0Harmony">
-      <HintPath>F:\Steam\steamapps\common\Derail Valley\DerailValley_Data\Managed\UnityModManager\0Harmony.dll</HintPath>
-    </Reference>
-    <Reference Include="Assembly-CSharp">
-      <HintPath>F:\Steam\steamapps\common\Derail Valley\DerailValley_Data\Managed\Assembly-CSharp.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.CoreModule">
-      <HintPath>F:\Steam\steamapps\common\Derail Valley\DerailValley_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.IMGUIModule">
-      <HintPath>F:\Steam\steamapps\common\Derail Valley\DerailValley_Data\Managed\UnityEngine.IMGUIModule.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityModManager">
-      <HintPath>F:\Steam\steamapps\common\Derail Valley\DerailValley_Data\Managed\UnityModManager\UnityModManager.dll</HintPath>
-    </Reference>
+    <Reference Include="0Harmony"/>
+    <Reference Include="Assembly-CSharp"/>
+    <Reference Include="UnityEngine.CoreModule"/>
+    <Reference Include="UnityEngine.IMGUIModule"/>
+    <Reference Include="UnityModManager"/>
   </ItemGroup>
 </Project>
