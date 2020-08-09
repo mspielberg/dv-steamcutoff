@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
     <RootNamespace>SteamCutoff</RootNamespace>
-    <InformationalVersion>v0.3.0</InformationalVersion>
+    <InformationalVersion>v0.4.0</InformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>
