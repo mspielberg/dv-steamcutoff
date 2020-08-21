@@ -69,7 +69,7 @@ namespace DvMod.SteamCutoff
         {
             [Draw("Boiler steam generation rate")] public float steamGenerationRate = 0.5f;
             [Draw("Cutoff wheel gamma")] public float cutoffGamma = 1.9f;
-            [Draw("Max boiler pressure")] public float safetyValveThreshold = 16f;
+            [Draw("Max boiler pressure")] public float safetyValveThreshold = 14f;
 
             [Draw("Enable detailed low-speed simulation")] public bool enableLowSpeedSimulation = true;
             [Draw("Low-speed simulation transition start", VisibleOn = "enableLowSpeedSimulation|true")]
