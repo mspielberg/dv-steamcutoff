@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
     <RootNamespace>DvMod.SteamCutoff</RootNamespace>
-    <InformationalVersion>v0.4.0-4-gc3aa391-dirty</InformationalVersion>
+    <InformationalVersion>v0.4.0-5-gfdb8623-dirty</InformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>

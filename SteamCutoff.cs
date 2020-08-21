@@ -106,23 +106,59 @@ namespace DvMod.SteamCutoff
         [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateSteam")]
         static class SimulateSteamPatch
         {
-            static void Postfix(SteamLocoSimulation __instance, float deltaTime)
+            static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
             {
                 if (!enabled)
-                    return;
+                    return true;
 
-                var loco = __instance.GetComponent<TrainCar>();
-                float before = __instance.boilerPressure.value;
-                float after = __instance.boilerPressure.nextValue;
-                if (after > before)
+                TrainCar loco = __instance.GetComponent<TrainCar>();
+                // evaporation
+                float boilingPoint = Mathf.Lerp(100f, 214f, Mathf.InverseLerp(0, 20, __instance.boilerPressure.value));
+                if (__instance.temperature.value >= boilingPoint && __instance.boilerWater.value > 0.0f)
                 {
-                    float pressureGain = after - before;
-                    float adjustedGain = pressureGain * settings.steamGenerationRate;
-                    float newPressure = before + adjustedGain;
-                    __instance.boilerPressure.SetNextValue(newPressure);
-                    if (deltaTime > 0 && loco == PlayerManager.LastLoco)
-                        HeadsUpDisplayBridge.instance?.UpdateSteamGeneration(loco, adjustedGain / deltaTime * __instance.timeMult);
-                }
+                    const float BASE_EVAPORATION_RATE = 0.02f;
+                    float excessTemp = __instance.temperature.value - boilingPoint;
+                    float evaporationLiters = BASE_EVAPORATION_RATE * excessTemp * deltaTime * settings.steamGenerationRate;
+                    __instance.boilerWater.AddNextValue(-evaporationLiters);
+
+                    // P1*V = n1*RT -> P1/n1 = RT/V = P2/n2
+                    // P2 = P1 * n2/n1 = P1 * (n1 + X) / n1 = P1 * (1 + X / n1) = P1 + P1 * X / n1
+                    // (n1 = P1 * V / RT)
+                    //    = P1 + P1 * X / (P1 * V / RT)
+                    //    = P1 + P1 * X / P1 / V * RT
+                    //    = P1 + X / V * RT
+                    //    = P1 + evapMol / V * RT
+                    const float WATER_MOL_PER_L = 55.55f;
+                    const float IDEAL_GAS_R = 8.3145e-2f; // L*bar/mol/K
+                    float pressureGain = WATER_MOL_PER_L * evaporationLiters * (boilingPoint + 273.15f) *
+                        IDEAL_GAS_R / BoilerSteamVolume(__instance.boilerWater.value);
+                    __instance.boilerPressure.AddNextValue(pressureGain);
+
+                    if (deltaTime > 0)
+                        HeadsUpDisplayBridge.instance?.UpdateSteamGeneration(loco, pressureGain / deltaTime * __instance.timeMult);
+                 }
+
+                // steam release
+                if (__instance.steamReleaser.value > 0.0f && __instance.boilerPressure.value > 0.0f)
+                    __instance.boilerPressure.AddNextValue(-__instance.steamReleaser.value * 3.0f * deltaTime);
+
+                // safety valve
+                const float SAFETY_VALVE_BLOWOFF = 0.2f; // 3 psi
+                if (__instance.boilerPressure.value >= settings.safetyValveThreshold && __instance.safetyPressureValve.value == 0f)
+                    __instance.safetyPressureValve.SetNextValue(1f);
+                else if (__instance.boilerPressure.value <= (settings.safetyValveThreshold - SAFETY_VALVE_BLOWOFF) && __instance.safetyPressureValve.value == 1f)
+                    __instance.safetyPressureValve.SetNextValue(0f);
+                if ( __instance.safetyPressureValve.value == 1f)
+                    __instance.boilerPressure.AddNextValue(-__instance.safetyPressureValve.value * 5.0f * deltaTime);
+
+                // passive leakage
+                __instance.pressureLeakMultiplier = Mathf.Lerp(
+                    1f, 100f,
+                    Mathf.InverseLerp(0.7f, 1f, __instance.GetComponent<DamageController>().bodyDamage.DamagePercentage));
+                float leakage = SteamLocoSimulation.PRESSURE_LEAK_L * __instance.pressureLeakMultiplier * deltaTime;
+                __instance.boilerPressure.AddNextValue(-leakage);
+
+                return false;
             }
         }
 
