@@ -11,7 +11,6 @@ namespace SteamCutoff
         public static bool enabled;
         public static Settings settings;
         public static UnityModManager.ModEntry mod;
-        public static GameObject behaviourRoot;
 
         static bool Load(UnityModManager.ModEntry modEntry)
         {
@@ -25,11 +24,6 @@ namespace SteamCutoff
             modEntry.OnSaveGUI = OnSaveGui;
             modEntry.OnToggle = OnToggle;
             modEntry.OnUnload = OnUnload;
-
-            if (SaveLoadController.carsAndJobsLoadingFinished && WorldStreamingInit.IsLoaded)
-                OnLoadingFinished();
-            else
-                WorldStreamingInit.LoadingFinished += OnLoadingFinished;
 
             return true;
         }
@@ -53,17 +47,8 @@ namespace SteamCutoff
             return true;
         }
 
-        static void OnLoadingFinished()
-        {
-            behaviourRoot = new GameObject();
-            behaviourRoot.AddComponent<Overlay>();
-        }
-
         static bool OnUnload(UnityModManager.ModEntry modEntry)
         {
-            if (behaviourRoot != null)
-                GameObject.Destroy(behaviourRoot);
-            behaviourRoot = null;
             var harmony = new Harmony(modEntry.Info.Id);
             harmony.UnpatchAll(modEntry.Info.Id);
             return true;
@@ -93,7 +78,6 @@ namespace SteamCutoff
             public float lowSpeedTransitionWidth = 5f;
 
             [Draw("Enable logging")] public bool enableLogging = false;
-            [Draw("Show info overlay")] public bool showInfoOverlay = false;
 
             override public void Save(UnityModManager.ModEntry entry) {
                 Save<Settings>(this, entry);
@@ -102,21 +86,6 @@ namespace SteamCutoff
             public void OnChange() {
                 cutoffGamma = Mathf.Max(cutoffGamma, 0.1f);
                 safetyValveThreshold = Mathf.Clamp(safetyValveThreshold, 0f, 20f);
-            }
-        }
-
-        [HarmonyPatch(typeof(LocoControllerSteam), "GetTractionForce")]
-        static class GetTractionForcePatch
-        {
-            static void Postfix(LocoControllerSteam __instance, float __result)
-            {
-                var car = __instance.GetComponent<TrainCar>();
-                if (car == PlayerManager.LastLoco)
-                {
-                    Overlay.instance.tractionForce = __result;
-                    var inclination = car.transform.localEulerAngles.x;
-                    Overlay.instance.UpdateInclination(inclination > 180 ? 360f - inclination : -inclination);
-                }
             }
         }
 
@@ -148,7 +117,7 @@ namespace SteamCutoff
                     float newPressure = before + adjustedGain;
                     __instance.boilerPressure.SetNextValue(newPressure);
                     if (deltaTime > 0 && loco == PlayerManager.LastLoco)
-                        Overlay.instance.UpdateSteamGeneration(adjustedGain / deltaTime * __instance.timeMult);
+                        HeadsUpDisplayBridge.instance?.UpdateSteamGeneration(loco, adjustedGain / deltaTime * __instance.timeMult);
                 }
             }
         }
@@ -213,8 +182,7 @@ namespace SteamCutoff
                     try
                     {
                         float cutoff = Mathf.Pow(__instance.cutoff.value, settings.cutoffGamma) * 0.85f;
-                        if (loco == PlayerManager.LastLoco)
-                            Overlay.instance.cutoffSetting = cutoff;
+                        HeadsUpDisplayBridge.instance?.UpdateCutoffSetting(loco, cutoff);
                         if (cutoff > 0)
                         {
                             float boilerPressureRatio =
@@ -236,8 +204,8 @@ namespace SteamCutoff
                             float boilerSteamVolume = BoilerSteamVolume(__instance.boilerWater.value);
                             float pressureConsumed = __instance.boilerPressure.value * boilerSteamVolumeConsumed / boilerSteamVolume;
                             __instance.boilerPressure.AddNextValue(-pressureConsumed);
-                            if (deltaTime > 0 && loco == PlayerManager.LastLoco)
-                                Overlay.instance.UpdateSteamUsage(pressureConsumed / deltaTime * __instance.timeMult);
+                            if (deltaTime > 0)
+                                HeadsUpDisplayBridge.instance?.UpdateSteamUsage(loco, pressureConsumed / deltaTime * __instance.timeMult);
                         }
                         return false;
                     }

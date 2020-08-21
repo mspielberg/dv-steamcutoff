@@ -3,6 +3,7 @@
   "DisplayName": "Steam Cutoff",
   "Author": "Zeibach",
   "Version": "0.5.0",
+  "LoadAfter": ["HeadsUpDisplay"],
   "AssemblyName": "SteamCutoff.dll",
   "EntryMethod": "SteamCutoff.Main.Load",
   "HomePage": "https://www.nexusmods.com/derailvalley/mods/192",
