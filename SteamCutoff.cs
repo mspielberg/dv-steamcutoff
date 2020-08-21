@@ -94,8 +94,9 @@ namespace DvMod.SteamCutoff
         {
             static void Postfix(SteamLocoSimulation __instance)
             {
-                if (!Main.enabled)
+                if (!enabled)
                     return;
+
                 float steamVolumeBefore = BoilerSteamVolume(__instance.boilerWater.value);
                 float steamVolumeAfter = BoilerSteamVolume(__instance.boilerWater.nextValue);
                 __instance.boilerPressure.SetValue(__instance.boilerPressure.value * steamVolumeBefore / steamVolumeAfter);
@@ -107,6 +108,9 @@ namespace DvMod.SteamCutoff
         {
             static void Postfix(SteamLocoSimulation __instance, float deltaTime)
             {
+                if (!enabled)
+                    return;
+
                 var loco = __instance.GetComponent<TrainCar>();
                 float before = __instance.boilerPressure.value;
                 float after = __instance.boilerPressure.nextValue;
@@ -176,45 +180,37 @@ namespace DvMod.SteamCutoff
 
             static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
             {
+                if (!enabled)
+                    return true;
+
                 var loco = __instance.GetComponent<TrainCar>();
-                if (Main.enabled)
+                float cutoff = Mathf.Pow(__instance.cutoff.value, settings.cutoffGamma) * 0.85f;
+                HeadsUpDisplayBridge.instance?.UpdateCutoffSetting(loco, cutoff);
+                if (cutoff > 0)
                 {
-                    try
-                    {
-                        float cutoff = Mathf.Pow(__instance.cutoff.value, settings.cutoffGamma) * 0.85f;
-                        HeadsUpDisplayBridge.instance?.UpdateCutoffSetting(loco, cutoff);
-                        if (cutoff > 0)
-                        {
-                            float boilerPressureRatio =
-                                __instance.boilerPressure.value / SteamLocoSimulation.BOILER_PRESSURE_MAX_KG_PER_SQR_CM;
-                            float steamChestPressureRatio = boilerPressureRatio * __instance.regulator.value;
+                    float boilerPressureRatio =
+                        __instance.boilerPressure.value / SteamLocoSimulation.BOILER_PRESSURE_MAX_KG_PER_SQR_CM;
+                    float steamChestPressureRatio = boilerPressureRatio * __instance.regulator.value;
 
-                            var chuff = __instance.GetComponent<ChuffController>();
-                            float powerRatio = PowerRatio(cutoff, __instance.speed.value, chuff.dbgCurrentRevolution);
-                            __instance.power.SetNextValue(steamChestPressureRatio * powerRatio * SteamLocoSimulation.POWER_CONST_HP);
+                    var chuff = __instance.GetComponent<ChuffController>();
+                    float powerRatio = PowerRatio(cutoff, __instance.speed.value, chuff.dbgCurrentRevolution);
+                    __instance.power.SetNextValue(steamChestPressureRatio * powerRatio * SteamLocoSimulation.POWER_CONST_HP);
 
-                            // USRA Light Mikado
-                            // cylinder displacement = 262L
-                            // 4 strokes / revolution
-                            // 4.4m driver circumference (see ChuffController)
-                            // ~909 strokes / km
-                            // (~0.25 strokes / s) / (km/h)
-                            float cylinderSteamVolumeConsumed = __instance.speed.value * 0.25f * 262f * cutoff * deltaTime;
-                            float boilerSteamVolumeConsumed = cylinderSteamVolumeConsumed * __instance.regulator.value;
-                            float boilerSteamVolume = BoilerSteamVolume(__instance.boilerWater.value);
-                            float pressureConsumed = __instance.boilerPressure.value * boilerSteamVolumeConsumed / boilerSteamVolume;
-                            __instance.boilerPressure.AddNextValue(-pressureConsumed);
-                            if (deltaTime > 0)
-                                HeadsUpDisplayBridge.instance?.UpdateSteamUsage(loco, pressureConsumed / deltaTime * __instance.timeMult);
-                        }
-                        return false;
-                    }
-                    catch (Exception e)
-                    {
-                        mod.Logger.Error(e.ToString());
-                    }
+                    // USRA Light Mikado
+                    // cylinder displacement = 262L
+                    // 4 strokes / revolution
+                    // 4.4m driver circumference (see ChuffController)
+                    // ~909 strokes / km
+                    // (~0.25 strokes / s) / (km/h)
+                    float cylinderSteamVolumeConsumed = __instance.speed.value * 0.25f * 262f * cutoff * deltaTime;
+                    float boilerSteamVolumeConsumed = cylinderSteamVolumeConsumed * __instance.regulator.value;
+                    float boilerSteamVolume = BoilerSteamVolume(__instance.boilerWater.value);
+                    float pressureConsumed = __instance.boilerPressure.value * boilerSteamVolumeConsumed / boilerSteamVolume;
+                    __instance.boilerPressure.AddNextValue(-pressureConsumed);
+                    if (deltaTime > 0)
+                        HeadsUpDisplayBridge.instance?.UpdateSteamUsage(loco, pressureConsumed / deltaTime * __instance.timeMult);
                 }
-                return true;
+                return false;
             }
         }
     }
