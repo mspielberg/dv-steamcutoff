@@ -5,7 +5,7 @@
   "Version": "0.5.0",
   "LoadAfter": ["HeadsUpDisplay"],
   "AssemblyName": "SteamCutoff.dll",
-  "EntryMethod": "SteamCutoff.Main.Load",
+  "EntryMethod": "DvMod.SteamCutoff.Main.Load",
   "HomePage": "https://www.nexusmods.com/derailvalley/mods/192",
   "Repository": "https://raw.githubusercontent.com/mspielberg/dv-steamcutoff/master/repository.json"
 }

@@ -2,7 +2,7 @@ using DvMod.HeadsUpDisplay;
 using UnityEngine;
 using UnityModManagerNet;
 
-namespace SteamCutoff
+namespace DvMod.SteamCutoff
 {
     class HeadsUpDisplayBridge
     {

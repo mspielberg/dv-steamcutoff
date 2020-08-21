@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
-    <RootNamespace>SteamCutoff</RootNamespace>
-    <InformationalVersion>v0.4.0-2-gfa47e50-dirty</InformationalVersion>
+    <RootNamespace>DvMod.SteamCutoff</RootNamespace>
+    <InformationalVersion>v0.4.0-3-g81553da-dirty</InformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>

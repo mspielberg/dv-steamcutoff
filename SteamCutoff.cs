@@ -3,7 +3,7 @@ using System;
 using UnityEngine;
 using UnityModManagerNet;
 
-namespace SteamCutoff
+namespace DvMod.SteamCutoff
 {
     [EnableReloading]
     public static class Main
