@@ -106,6 +106,9 @@ namespace DvMod.SteamCutoff
         [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateSteam")]
         static class SimulateSteamPatch
         {
+            const float BASE_EVAPORATION_RATE = 0.01f;
+            const float PASSIVE_LEAK_ADJUST = 0.5f;
+
             static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
             {
                 if (!enabled)
@@ -116,7 +119,6 @@ namespace DvMod.SteamCutoff
                 float boilingPoint = Mathf.Lerp(100f, 214f, Mathf.InverseLerp(0, 20, __instance.boilerPressure.value));
                 if (__instance.temperature.value >= boilingPoint && __instance.boilerWater.value > 0.0f)
                 {
-                    const float BASE_EVAPORATION_RATE = 0.02f;
                     float excessTemp = __instance.temperature.value - boilingPoint;
                     float evaporationLiters = BASE_EVAPORATION_RATE * excessTemp * deltaTime * settings.steamGenerationRate;
                     __instance.boilerWater.AddNextValue(-evaporationLiters);
@@ -155,7 +157,7 @@ namespace DvMod.SteamCutoff
                 __instance.pressureLeakMultiplier = Mathf.Lerp(
                     1f, 100f,
                     Mathf.InverseLerp(0.7f, 1f, __instance.GetComponent<DamageController>().bodyDamage.DamagePercentage));
-                float leakage = SteamLocoSimulation.PRESSURE_LEAK_L * __instance.pressureLeakMultiplier * deltaTime;
+                float leakage = PASSIVE_LEAK_ADJUST * SteamLocoSimulation.PRESSURE_LEAK_L * __instance.pressureLeakMultiplier * deltaTime;
                 __instance.boilerPressure.AddNextValue(-leakage);
 
                 return false;
