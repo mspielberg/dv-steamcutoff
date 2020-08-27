@@ -22,25 +22,24 @@ namespace DvMod.SteamCutoff
             }
         }
 
-        PushProvider steamGenerationProvider = new PushProvider(
-            "Steam generation", () => true, v => $"{Mathf.RoundToInt(v * 1000)} mbar/s");
-        PushProvider steamConsumptionProvider = new PushProvider(
-            "Steam consumption", () => true, v => $"{Mathf.RoundToInt(v * 1000)} mbar/s");
-
         void Register()
         {
+            PushProvider steamGenerationProvider = new PushProvider(
+                "Steam generation", () => true, v => $"{Mathf.RoundToInt(v * 1000)} mbar/s");
+            PushProvider steamConsumptionProvider = new PushProvider(
+                "Steam consumption", () => true, v => $"{Mathf.RoundToInt(v * 1000)} mbar/s");
             Registry.Register(TrainCarType.LocoSteamHeavy, steamGenerationProvider);
             Registry.Register(TrainCarType.LocoSteamHeavy, steamConsumptionProvider);
         }
 
         public void UpdateSteamGeneration(TrainCar car, float pressureRise)
         {
-            steamGenerationProvider.MixSmoothedValue(car, pressureRise);
+            ((PushProvider)Registry.GetProvider(car.carType, "Steam generation")).MixSmoothedValue(car, pressureRise);
         }
 
         public void UpdateSteamUsage(TrainCar car, float pressureDrop)
         {
-            steamConsumptionProvider.MixSmoothedValue(car, pressureDrop);
+            ((PushProvider)Registry.GetProvider(car.carType, "Steam consumption")).MixSmoothedValue(car, pressureDrop);
         }
 
         public void UpdateCutoffSetting(TrainCar car, float cutoff)
