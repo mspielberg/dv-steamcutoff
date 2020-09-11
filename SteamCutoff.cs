@@ -9,10 +9,10 @@ namespace DvMod.SteamCutoff
     public static class Main
     {
         public static bool enabled;
-        public static Settings settings;
-        public static UnityModManager.ModEntry mod;
+        public static Settings settings = new Settings();
+        public static UnityModManager.ModEntry? mod;
 
-        static bool Load(UnityModManager.ModEntry modEntry)
+        public static bool Load(UnityModManager.ModEntry modEntry)
         {
             mod = modEntry;
 
@@ -28,17 +28,17 @@ namespace DvMod.SteamCutoff
             return true;
         }
 
-        static void OnGui(UnityModManager.ModEntry modEntry)
+        private static void OnGui(UnityModManager.ModEntry modEntry)
         {
             settings.Draw(modEntry);
         }
 
-        static void OnSaveGui(UnityModManager.ModEntry modEntry)
+        private static void OnSaveGui(UnityModManager.ModEntry modEntry)
         {
             settings.Save(modEntry);
         }
 
-        static bool OnToggle(UnityModManager.ModEntry modEntry, bool value)
+        private static bool OnToggle(UnityModManager.ModEntry modEntry, bool value)
         {
             if (value != enabled)
             {
@@ -47,22 +47,22 @@ namespace DvMod.SteamCutoff
             return true;
         }
 
-        static bool OnUnload(UnityModManager.ModEntry modEntry)
+        private static bool OnUnload(UnityModManager.ModEntry modEntry)
         {
             var harmony = new Harmony(modEntry.Info.Id);
             harmony.UnpatchAll(modEntry.Info.Id);
             return true;
         }
 
-        static float BoilerSteamVolume(float boilerWater)
+        private static float BoilerSteamVolume(float boilerWater)
         {
-            return SteamLocoSimulation.BOILER_WATER_CAPACITY_L * 1.05f - boilerWater;
+            return (SteamLocoSimulation.BOILER_WATER_CAPACITY_L * 1.05f) - boilerWater;
         }
 
         public static void DebugLog(string message)
         {
             if (settings.enableLogging)
-                mod.Logger.Log(message);
+                mod?.Logger.Log(message);
         }
 
         public class Settings : UnityModManager.ModSettings, IDrawable
@@ -90,9 +90,9 @@ namespace DvMod.SteamCutoff
         }
 
         [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateWater")]
-        static class SimulateWaterPatch
+        private static class SimulateWaterPatch
         {
-            static void Postfix(SteamLocoSimulation __instance)
+            private static void Postfix(SteamLocoSimulation __instance)
             {
                 if (!enabled)
                     return;
@@ -104,12 +104,12 @@ namespace DvMod.SteamCutoff
         }
 
         [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateSteam")]
-        static class SimulateSteamPatch
+        private static class SimulateSteamPatch
         {
-            const float BASE_EVAPORATION_RATE = 0.01f;
-            const float PASSIVE_LEAK_ADJUST = 0.5f;
+            private const float BASE_EVAPORATION_RATE = 0.01f;
+            private const float PASSIVE_LEAK_ADJUST = 0.5f;
 
-            static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
+            private static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
             {
                 if (!enabled)
                     return true;
@@ -165,10 +165,10 @@ namespace DvMod.SteamCutoff
         }
 
         [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateCylinder")]
-        static class SimulateCylinderPatch
+        private static class SimulateCylinderPatch
         {
-            const float SINUSOID_AVERAGE = 2f / Mathf.PI;
-            static float InstantaneousCylinderPowerRatio(float cutoff, float pistonPosition)
+            private const float SINUSOID_AVERAGE = 2f / Mathf.PI;
+            private static float InstantaneousCylinderPowerRatio(float cutoff, float pistonPosition)
             {
                 float pressureRatio = pistonPosition <= cutoff ? 1f : cutoff / pistonPosition;
                 float angleRatio = Mathf.Sin(Mathf.PI * pistonPosition) / SINUSOID_AVERAGE;
@@ -189,7 +189,7 @@ namespace DvMod.SteamCutoff
             // 0.75 <= rotation < 1
             //    cyl1 acting backward, position = (rotation - 0.5) * 2
             //    cyl2 acting forward, position = (rotation - 0.75) * 2
-            static float InstantaneousPowerRatio(float cutoff, float rotation)
+            private static float InstantaneousPowerRatio(float cutoff, float rotation)
             {
                 float pistonPosition1 = rotation % 0.5f * 2f;
                 float pistonPosition2 = (rotation + 0.25f) % 0.5f * 2f;
@@ -197,14 +197,14 @@ namespace DvMod.SteamCutoff
                     InstantaneousCylinderPowerRatio(cutoff, pistonPosition2);
             }
 
-            static float AveragePowerRatio(float cutoff)
+            private static float AveragePowerRatio(float cutoff)
             {
                 float injectionPower = cutoff;
                 float expansionPower = cutoff * -Mathf.Log(cutoff);
                 return injectionPower + expansionPower;
             }
 
-            static float PowerRatio(float cutoff, float speed, float revolution)
+            private static float PowerRatio(float cutoff, float speed, float revolution)
             {
                 if (!settings.enableLowSpeedSimulation)
                     return AveragePowerRatio(cutoff);
@@ -216,7 +216,7 @@ namespace DvMod.SteamCutoff
                             settings.lowSpeedTransitionWidth);
             }
 
-            static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
+            private static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
             {
                 if (!enabled)
                     return true;

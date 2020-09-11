@@ -4,9 +4,9 @@ using UnityModManagerNet;
 
 namespace DvMod.SteamCutoff
 {
-    class HeadsUpDisplayBridge
+    internal class HeadsUpDisplayBridge
     {
-        public static HeadsUpDisplayBridge instance;
+        public static HeadsUpDisplayBridge? instance;
 
         static HeadsUpDisplayBridge()
         {
@@ -22,7 +22,7 @@ namespace DvMod.SteamCutoff
             }
         }
 
-        void Register()
+        private void Register()
         {
             PushProvider steamGenerationProvider = new PushProvider(
                 "Steam generation", () => true, v => $"{Mathf.RoundToInt(v * 1000)} mbar/s");
@@ -34,17 +34,20 @@ namespace DvMod.SteamCutoff
 
         public void UpdateSteamGeneration(TrainCar car, float pressureRise)
         {
-            ((PushProvider)Registry.GetProvider(car.carType, "Steam generation")).MixSmoothedValue(car, pressureRise);
+            if (Registry.GetProvider(car.carType, "Steam generation") is PushProvider pp)
+                pp.MixSmoothedValue(car, pressureRise);
         }
 
         public void UpdateSteamUsage(TrainCar car, float pressureDrop)
         {
-            ((PushProvider)Registry.GetProvider(car.carType, "Steam consumption")).MixSmoothedValue(car, pressureDrop);
+            if (Registry.GetProvider(car.carType, "Steam consumption") is PushProvider pp)
+                pp.MixSmoothedValue(car, pressureDrop);
         }
 
         public void UpdateCutoffSetting(TrainCar car, float cutoff)
         {
-            ((PushProvider)Registry.GetProvider(car.carType, "Cutoff")).SetValue(car, cutoff);
+            if (Registry.GetProvider(car.carType, "Cutoff") is PushProvider pp)
+                pp.SetValue(car, cutoff);
         }
     }
 }
