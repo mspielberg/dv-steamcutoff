@@ -1,5 +1,7 @@
 ﻿using HarmonyLib;
 using System;
+using System.Collections.Generic;
+using System.Reflection.Emit;
 using UnityEngine;
 using UnityModManagerNet;
 
@@ -90,6 +92,29 @@ namespace DvMod.SteamCutoff
             }
         }
 
+        static float BoilingPoint(SteamLocoSimulation sim)
+        {
+            return Mathf.Lerp(100f, 214f, Mathf.InverseLerp(0, 20, sim.boilerPressure.value));
+        }
+
+        [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateBlowerDraftFireCoalTemp")]
+        static class SimulateFirePatch
+        {
+            static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+            {
+                foreach (var inst in instructions)
+                {
+                    if (inst.LoadsConstant(80f))
+                    {
+                        yield return new CodeInstruction(OpCodes.Ldarg_0); // this
+                        yield return new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Main), nameof(BoilingPoint)));
+                    }
+                    else
+                        yield return inst;
+                }
+            }
+        }
+
         [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateWater")]
         private static class SimulateWaterPatch
         {
@@ -117,7 +142,7 @@ namespace DvMod.SteamCutoff
 
                 TrainCar loco = __instance.GetComponent<TrainCar>();
                 // evaporation
-                float boilingPoint = Mathf.Lerp(100f, 214f, Mathf.InverseLerp(0, 20, __instance.boilerPressure.value));
+                float boilingPoint = BoilingPoint(__instance);
                 if (__instance.temperature.value >= boilingPoint && __instance.boilerWater.value > 0.0f)
                 {
                     float excessTemp = __instance.temperature.value - boilingPoint;
