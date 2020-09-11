@@ -277,5 +277,15 @@ namespace DvMod.SteamCutoff
                 return false;
             }
         }
+
+        [HarmonyPatch(typeof(ChuffController), nameof(ChuffController.Update))]
+        static class ChuffControllerPatch
+        {
+            static bool Prefix(ChuffController __instance)
+            {
+                __instance.chuffsPerRevolution = 4;
+                return true;
+            }
+        }
     }
 }
