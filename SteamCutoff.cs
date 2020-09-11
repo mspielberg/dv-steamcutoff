@@ -92,7 +92,7 @@ namespace DvMod.SteamCutoff
         [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateWater")]
         private static class SimulateWaterPatch
         {
-            private static void Postfix(SteamLocoSimulation __instance)
+            public static void Postfix(SteamLocoSimulation __instance)
             {
                 if (!enabled)
                     return;
@@ -109,7 +109,7 @@ namespace DvMod.SteamCutoff
             private const float BASE_EVAPORATION_RATE = 0.01f;
             private const float PASSIVE_LEAK_ADJUST = 0.5f;
 
-            private static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
+            public static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
             {
                 if (!enabled)
                     return true;
@@ -216,7 +216,7 @@ namespace DvMod.SteamCutoff
                             settings.lowSpeedTransitionWidth);
             }
 
-            private static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
+            public static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
             {
                 if (!enabled)
                     return true;
