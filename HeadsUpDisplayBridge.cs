@@ -12,7 +12,7 @@ namespace DvMod.SteamCutoff
         {
             try
             {
-                if (UnityModManager.FindMod("HeadsUpDisplay") == null)
+                if (UnityModManager.FindMod("HeadsUpDisplay")?.Loaded != true)
                     return;
                 instance = new HeadsUpDisplayBridge();
                 instance.Register();
