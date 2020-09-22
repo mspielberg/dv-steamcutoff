@@ -1,10 +1,13 @@
-using DvMod.HeadsUpDisplay;
+using System;
 using UnityEngine;
 using UnityModManagerNet;
 
 namespace DvMod.SteamCutoff
 {
-    internal class HeadsUpDisplayBridge
+    using Formatter = Func<float, string>;
+    using Pusher = Action<TrainCar, float>;
+
+    internal sealed class HeadsUpDisplayBridge
     {
         public static HeadsUpDisplayBridge? instance;
 
@@ -12,42 +15,77 @@ namespace DvMod.SteamCutoff
         {
             try
             {
-                if (UnityModManager.FindMod("HeadsUpDisplay")?.Loaded != true)
+                var hudMod = UnityModManager.FindMod("HeadsUpDisplay");
+                if (hudMod?.Loaded != true)
                     return;
-                instance = new HeadsUpDisplayBridge();
-                instance.Register();
+                instance = new HeadsUpDisplayBridge(hudMod);
             }
             catch (System.IO.FileNotFoundException)
             {
             }
         }
 
-        private void Register()
+        private readonly Pusher? steamGenerationPusher;
+        private readonly Pusher? steamConsumptionPusher;
+        private readonly Pusher? cutoffSettingPusher;
+
+        private static readonly Type[] RegisterPushArgumentTypes = new Type[]
         {
-            PushProvider steamGenerationProvider = new PushProvider(
-                "Steam generation", () => true, v => $"{Mathf.RoundToInt(v * 1000)} mbar/s");
-            PushProvider steamConsumptionProvider = new PushProvider(
-                "Steam consumption", () => true, v => $"{Mathf.RoundToInt(v * 1000)} mbar/s");
-            Registry.Register(TrainCarType.LocoSteamHeavy, steamGenerationProvider);
-            Registry.Register(TrainCarType.LocoSteamHeavy, steamConsumptionProvider);
+            typeof(object),
+            typeof(string),
+            typeof(Formatter),
+            typeof(IComparable)
+        };
+
+        private static readonly Type[] GetPusherArgumentTypes = new Type[]
+        {
+            typeof(object),
+            typeof(string)
+        };
+
+        private HeadsUpDisplayBridge(UnityModManager.ModEntry hudMod)
+        {
+            if (hudMod.Invoke(
+                "DvMod.HeadsUpDisplay.Registry.RegisterPush",
+                out var steamGenerationPusher,
+                new object?[] { TrainCarType.LocoSteamHeavy, "Steam gen", (Formatter)(v => $"{Mathf.RoundToInt(v * 1000)} mbar/s"), null },
+                RegisterPushArgumentTypes))
+            {
+                this.steamGenerationPusher = (Pusher)steamGenerationPusher;
+            }
+
+            if (hudMod.Invoke(
+                "DvMod.HeadsUpDisplay.Registry.RegisterPush",
+                out var steamConsumptionPusher,
+                new object?[] { TrainCarType.LocoSteamHeavy, "Steam use", (Formatter)(v => $"{Mathf.RoundToInt(v * 1000)} mbar/s"), null },
+                RegisterPushArgumentTypes))
+            {
+                this.steamConsumptionPusher = (Pusher)steamConsumptionPusher;
+            }
+
+            if (hudMod.Invoke(
+                "DvMod.HeadsUpDisplay.Registry.GetPusher",
+                out var cutoffSettingPusher,
+                new object?[] { TrainCarType.LocoSteamHeavy , "Cutoff"},
+                GetPusherArgumentTypes))
+            {
+                this.cutoffSettingPusher = (Pusher)cutoffSettingPusher;
+            }
         }
 
         public void UpdateSteamGeneration(TrainCar car, float pressureRise)
         {
-            if (Registry.GetProvider(car.carType, "Steam generation") is PushProvider pp)
-                pp.MixSmoothedValue(car, pressureRise);
+            steamGenerationPusher?.Invoke(car, pressureRise);
         }
 
         public void UpdateSteamUsage(TrainCar car, float pressureDrop)
         {
-            if (Registry.GetProvider(car.carType, "Steam consumption") is PushProvider pp)
-                pp.MixSmoothedValue(car, pressureDrop);
+            steamConsumptionPusher?.Invoke(car, pressureDrop);
         }
 
         public void UpdateCutoffSetting(TrainCar car, float cutoff)
         {
-            if (Registry.GetProvider(car.carType, "Cutoff") is PushProvider pp)
-                pp.SetValue(car, cutoff);
+            cutoffSettingPusher?.Invoke(car, cutoff);
         }
     }
 }
