@@ -1,12 +1,11 @@
 using System;
 using UnityEngine;
 using UnityModManagerNet;
+using Formatter = System.Func<float, string>;
+using Pusher = System.Action<TrainCar, float>;
 
 namespace DvMod.SteamCutoff
 {
-    using Formatter = Func<float, string>;
-    using Pusher = Action<TrainCar, float>;
-
     internal sealed class HeadsUpDisplayBridge
     {
         public static HeadsUpDisplayBridge? instance;
@@ -31,7 +30,6 @@ namespace DvMod.SteamCutoff
 
         private static readonly Type[] RegisterPushArgumentTypes = new Type[]
         {
-            typeof(object),
             typeof(string),
             typeof(Formatter),
             typeof(IComparable)
@@ -39,34 +37,35 @@ namespace DvMod.SteamCutoff
 
         private static readonly Type[] GetPusherArgumentTypes = new Type[]
         {
-            typeof(object),
             typeof(string)
         };
 
         private HeadsUpDisplayBridge(UnityModManager.ModEntry hudMod)
         {
-            if (hudMod.Invoke(
-                "DvMod.HeadsUpDisplay.Registry.RegisterPush",
-                out var steamGenerationPusher,
-                new object?[] { TrainCarType.LocoSteamHeavy, "Steam gen", (Formatter)(v => $"{Mathf.RoundToInt(v * 1000)} mbar/s"), null },
-                RegisterPushArgumentTypes))
+            void RegisterPush(out Pusher pusher, string label, Formatter formatter, IComparable? order = null)
             {
-                this.steamGenerationPusher = (Pusher)steamGenerationPusher;
+                hudMod.Invoke(
+                    "DvMod.HeadsUpDisplay.Registry.RegisterPush",
+                    out var temp,
+                    new object?[] { label, formatter, order },
+                    RegisterPushArgumentTypes);
+                pusher = (Pusher)temp;
             }
 
-            if (hudMod.Invoke(
-                "DvMod.HeadsUpDisplay.Registry.RegisterPush",
-                out var steamConsumptionPusher,
-                new object?[] { TrainCarType.LocoSteamHeavy, "Steam use", (Formatter)(v => $"{Mathf.RoundToInt(v * 1000)} mbar/s"), null },
-                RegisterPushArgumentTypes))
-            {
-                this.steamConsumptionPusher = (Pusher)steamConsumptionPusher;
-            }
+            RegisterPush(
+                out steamGenerationPusher,
+                "Steam gen",
+                v => $"{v * 1000:F0} mbar/s");
+
+            RegisterPush(
+                out steamConsumptionPusher,
+                "Steam use",
+                 v => $"{v * 1000:F0} mbar/s");
 
             if (hudMod.Invoke(
                 "DvMod.HeadsUpDisplay.Registry.GetPusher",
                 out var cutoffSettingPusher,
-                new object?[] { TrainCarType.LocoSteamHeavy , "Cutoff"},
+                new object?[] { "Cutoff" },
                 GetPusherArgumentTypes))
             {
                 this.cutoffSettingPusher = (Pusher)cutoffSettingPusher;
