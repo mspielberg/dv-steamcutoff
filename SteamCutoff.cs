@@ -236,10 +236,10 @@ namespace DvMod.SteamCutoff
                     return AveragePowerRatio(cutoff);
 
                 return Mathf.Lerp(
-                        InstantaneousPowerRatio(cutoff, revolution),
-                        AveragePowerRatio(cutoff),
-                        (speed - settings.lowSpeedTransitionStart) /
-                            settings.lowSpeedTransitionWidth);
+                    InstantaneousPowerRatio(cutoff, revolution),
+                    AveragePowerRatio(cutoff),
+                    (speed - settings.lowSpeedTransitionStart) /
+                    settings.lowSpeedTransitionWidth);
             }
 
             public static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
