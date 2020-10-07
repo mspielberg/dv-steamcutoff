@@ -1,5 +1,4 @@
 using HarmonyLib;
-using System;
 using System.Collections.Generic;
 using System.Reflection.Emit;
 using UnityEngine;
@@ -83,7 +82,7 @@ namespace DvMod.SteamCutoff
             [Draw("Enable logging")] public bool enableLogging = false;
 
             override public void Save(UnityModManager.ModEntry entry) {
-                Save<Settings>(this, entry);
+                Save(this, entry);
             }
 
             public void OnChange() {
@@ -92,15 +91,15 @@ namespace DvMod.SteamCutoff
             }
         }
 
-        static float BoilingPoint(SteamLocoSimulation sim)
+        private static float BoilingPoint(SteamLocoSimulation sim)
         {
             return Mathf.Lerp(100f, 214f, Mathf.InverseLerp(0, 20, sim.boilerPressure.value));
         }
 
         [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateBlowerDraftFireCoalTemp")]
-        static class SimulateFirePatch
+        public static class SimulateFirePatch
         {
-            static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+            public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
             {
                 foreach (var inst in instructions)
                 {
@@ -110,7 +109,9 @@ namespace DvMod.SteamCutoff
                         yield return new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Main), nameof(BoilingPoint)));
                     }
                     else
+                    {
                         yield return inst;
+                    }
                 }
             }
         }
@@ -279,9 +280,9 @@ namespace DvMod.SteamCutoff
         }
 
         [HarmonyPatch(typeof(ChuffController), nameof(ChuffController.Update))]
-        static class ChuffControllerPatch
+        public static class ChuffControllerPatch
         {
-            static bool Prefix(ChuffController __instance)
+            public static bool Prefix(ChuffController __instance)
             {
                 __instance.chuffsPerRevolution = 4;
                 return true;
