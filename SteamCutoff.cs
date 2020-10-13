@@ -134,7 +134,7 @@ namespace DvMod.SteamCutoff
         private static class SimulateSteamPatch
         {
             private const float BASE_EVAPORATION_RATE = 0.01f;
-            private const float PASSIVE_LEAK_ADJUST = 0.5f;
+            private const float PASSIVE_LEAK_ADJUST = 0.1f;
 
             public static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
             {
@@ -182,7 +182,7 @@ namespace DvMod.SteamCutoff
 
                 // passive leakage
                 __instance.pressureLeakMultiplier = Mathf.Lerp(
-                    1f, 100f,
+                    1f, 100f / PASSIVE_LEAK_ADJUST,
                     Mathf.InverseLerp(0.7f, 1f, __instance.GetComponent<DamageController>().bodyDamage.DamagePercentage));
                 float leakage = PASSIVE_LEAK_ADJUST * SteamLocoSimulation.PRESSURE_LEAK_L * __instance.pressureLeakMultiplier * deltaTime;
                 __instance.boilerPressure.AddNextValue(-leakage);
