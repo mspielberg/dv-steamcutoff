@@ -1,6 +1,7 @@
 using DV.CabControls;
 using DV.CabControls.Spec;
 using HarmonyLib;
+using UnityEngine;
 
 namespace DvMod.SteamCutoff
 {
@@ -19,6 +20,20 @@ namespace DvMod.SteamCutoff
                 {
                     pullerSpec.invertDirection ^= true;
                 }
+            }
+        }
+
+        [HarmonyPatch(typeof(HJAFDrivenAnimation), nameof(HJAFDrivenAnimation.Update))]
+        public static class HJAFDrivenAnimationPatch
+        {
+            public static bool Prefix(HJAFDrivenAnimation __instance, HingeJointAngleFix ___hjaf)
+            {
+                if (__instance.name != "Regulator Stem Animated")
+                    return true;
+                if (!__instance.initialized)
+                    return false;
+                __instance.animator.SetFloat(__instance.floatParameterName, Mathf.Clamp(__instance.debugOverride ? __instance.debugValue : 1f - ___hjaf.Percentage, 0.0f, 0.999f));
+                return false;
             }
         }
     }
