@@ -1,7 +1,7 @@
 using System;
-using UnityEngine;
 using UnityModManagerNet;
 using Formatter = System.Func<float, string>;
+using Provider = System.Func<TrainCar, float?>;
 using Pusher = System.Action<TrainCar, float>;
 
 namespace DvMod.SteamCutoff
@@ -24,9 +24,18 @@ namespace DvMod.SteamCutoff
             }
         }
 
+        private readonly Pusher? waterEvapPusher;
         private readonly Pusher? steamGenerationPusher;
         private readonly Pusher? steamConsumptionPusher;
         private readonly Pusher? cutoffSettingPusher;
+
+        private static readonly Type[] RegisterPullArgumentTypes = new Type[]
+        {
+            typeof(string),
+            typeof(Provider),
+            typeof(Formatter),
+            typeof(IComparable)
+        };
 
         private static readonly Type[] RegisterPushArgumentTypes = new Type[]
         {
@@ -42,6 +51,15 @@ namespace DvMod.SteamCutoff
 
         private HeadsUpDisplayBridge(UnityModManager.ModEntry hudMod)
         {
+            void RegisterPull(string label, Provider provider, Formatter formatter, IComparable? order = null)
+            {
+                hudMod.Invoke(
+                    "DvMod.HeadsUpDisplay.Registry.RegisterPull",
+                    out var _,
+                    new object?[] { label, provider, formatter, order },
+                    RegisterPullArgumentTypes);
+            }
+
             void RegisterPush(out Pusher pusher, string label, Formatter formatter, IComparable? order = null)
             {
                 hudMod.Invoke(
@@ -51,6 +69,21 @@ namespace DvMod.SteamCutoff
                     RegisterPushArgumentTypes);
                 pusher = (Pusher)temp;
             }
+
+            RegisterPull(
+                "Coalbox",
+                car => car.GetComponent<SteamLocoSimulation>()?.coalbox?.value,
+                v => $"{v:F1} kg");
+
+            RegisterPull(
+                "Coal use",
+                car => car.GetComponent<SteamLocoSimulation>()?.coalConsumptionRate,
+                v => $"{v:F1} kg/s");
+
+            RegisterPush(
+                out waterEvapPusher,
+                "Evaporation",
+                v => $"{v:F1} kg/s");
 
             RegisterPush(
                 out steamGenerationPusher,
@@ -70,6 +103,11 @@ namespace DvMod.SteamCutoff
             {
                 this.cutoffSettingPusher = (Pusher)cutoffSettingPusher;
             }
+        }
+
+        public void UpdateWaterEvap(TrainCar car, float evapKg)
+        {
+            waterEvapPusher?.Invoke(car, evapKg);
         }
 
         public void UpdateSteamGeneration(TrainCar car, float pressureRise)
