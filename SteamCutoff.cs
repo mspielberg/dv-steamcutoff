@@ -91,69 +91,36 @@ namespace DvMod.SteamCutoff
             }
         }
 
-        private static float BoilingPoint(SteamLocoSimulation sim)
-        {
-            return Mathf.Lerp(100f, 214f, Mathf.InverseLerp(0, 20, sim.boilerPressure.value));
-        }
-
         [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateBlowerDraftFireCoalTemp")]
         public static class SimulateFirePatch
         {
-            /*
-            public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
-            {
-                foreach (var inst in instructions)
-                {
-                    if (inst.LoadsConstant(80f))
-                    {
-                        yield return new CodeInstruction(OpCodes.Ldarg_0); // this
-                        yield return new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Main), nameof(BoilingPoint)));
-                    }
-                    else
-                    {
-                        yield return inst;
-                    }
-                }
-            }
-            */
-
+            public const float BlowerMaxRate = 1f;
             public static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
             {
                 if (!enabled)
                     return true;
 
-                TrainCar loco = TrainCar.Resolve(__instance.gameObject);
-                /*
-                float blowerBonus = __instance.GetBlowerBonus();
-                if ((double) blowerBonus > 0.0)
-                __instance.boilerPressure.AddNextValue(-0.4f * blowerBonus * deltaTime);
-                float draftBonus = __instance.GetDraftBonus();
-                */
+                FireState state = FireState.Instance(__instance);
+                float cylinderMassFlow = CylinderSimulation.CylinderSteamMassFlow(__instance);
+                float blowerMassFlow = __instance.GetBlowerBonus() * BlowerMaxRate;
+                __instance.boilerPressure.AddNextValue(
+                    -blowerMassFlow / SteamTables.SteamDensity(__instance.boilerPressure.value));
+
+                state.SetOxygenSupply((cylinderMassFlow + blowerMassFlow) * Mathf.Lerp(0.05f, 1f, __instance.draft.value));
+
                 if (__instance.fireOn.value == 1f && __instance.coalbox.value > 0f)
                 {
-                    // __instance.coalConsumptionRate = (float) (1.0 * (this.temperature.value / 140.0) + (double) draftBonus * 8.0 + (double) blowerBonus * 12.0);
-                    __instance.coalConsumptionRate = Mathf.Lerp(0, 1.8f, __instance.coalbox.value / __instance.coalbox.max);
-                    Main.DebugLog($"SimulateFire: coalbox.value={__instance.coalbox.value}, coalbox.max={__instance.coalbox.max}, t={__instance.coalbox.value / __instance.coalbox.max}, consumptionRate={__instance.coalConsumptionRate}");
-                    /*
-                    if (__instance.coalbox.value <= 0.1f * __instance.coalbox.max)
-                        __instance.coalConsumptionRate *= 0.1f;
-                    */
+                    __instance.coalConsumptionRate = state.CoalConsumptionRate();
                     float num = __instance.coalConsumptionRate * deltaTime / __instance.timeMult;
                     __instance.TotalCoalConsumed += num;
                     __instance.coalbox.AddNextValue(-num);
-                    // __instance.temperature.AddNextValue((float) (650.0 * (1.0 + (double) draftBonus + (double) blowerBonus) * ((double) __instance.coalbox.value / 350.0) - (double) this.temperature.value / 16.0) * deltaTime);
+                    state.ConsumeCoal(deltaTime / __instance.timeMult);
                 }
                 else
                 {
                     __instance.fireOn.SetNextValue(0.0f);
                     __instance.coalConsumptionRate = 0.0f;
                 }
-                /*
-                __instance.temperature.AddNextValue((float) (-1.0 * ((1.0 + (double) this.temperature.value / 8.0 + 20.0 * (double) __instance.fireDoorOpen.value) * (double) deltaTime)));
-                if (__instance.fireOn.value <= 0f)
-                    return false;
-                __instance.temperature.SetNextValue(Mathf.Clamp(__instance.temperature.nextValue, BoilingPoint(__instance), __instance.temperature.max));
-                */
                 return false;
             }
         }
@@ -168,18 +135,15 @@ namespace DvMod.SteamCutoff
 
                 float steamVolumeBefore = BoilerSteamVolume(__instance.boilerWater.value);
                 float steamVolumeAfter = BoilerSteamVolume(__instance.boilerWater.nextValue);
-                __instance.boilerPressure.SetValue(__instance.boilerPressure.value * steamVolumeBefore / steamVolumeAfter);
+                float pressureAfter = __instance.boilerPressure.value * steamVolumeBefore / steamVolumeAfter;
+                __instance.boilerPressure.SetNextValue(pressureAfter);
             }
         }
 
         [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateSteam")]
         private static class SimulateSteamPatch
         {
-            private const float BASE_EVAPORATION_RATE = 0.01f;
             private const float PASSIVE_LEAK_ADJUST = 0.1f;
-
-            private static float WaterDensity(float pressureBar) => Mathf.Lerp(0.95839f, 0.86707f, pressureBar / 14f);
-            private static float SteamDensity(float pressureBar) => Mathf.Lerp(0.0005975f, 0.007541f, pressureBar / 14f);
 
             public static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
             {
@@ -187,40 +151,20 @@ namespace DvMod.SteamCutoff
                     return true;
 
                 TrainCar loco = __instance.GetComponent<TrainCar>();
+                FireState state = FireState.Instance(__instance);
                 // evaporation
-                float boilingPoint = BoilingPoint(__instance);
-                // if (__instance.temperature.value >= boilingPoint && __instance.boilerWater.value > 0.0f)
-                // {
-                    float excessTemp = __instance.temperature.value - boilingPoint;
-                    // float evaporationLiters = BASE_EVAPORATION_RATE * excessTemp * deltaTime * settings.steamGenerationRate;
-                    float evaporationRate = BoilerSimulation.EvaporationRate(__instance.coalConsumptionRate);
-                    HeadsUpDisplayBridge.instance?.UpdateWaterEvap(loco, evaporationRate);
-                    float evaporationMass = evaporationRate * deltaTime / __instance.timeMult;
-                    float evaporationVolume = evaporationMass / WaterDensity(__instance.boilerPressure.value);
+                float heatEnergyFromCoal = state.HeatYieldRate() * deltaTime / __instance.timeMult; // in kJ
+                float evaporationMass = heatEnergyFromCoal / SteamTables.SpecificEnthalpyOfVaporization(__instance);
+                float evaporationVolume = evaporationMass / SteamTables.WaterDensity(__instance);
 
-                    __instance.boilerWater.AddNextValue(-evaporationVolume * settings.waterConsumptionMultiplier);
+                __instance.boilerWater.AddNextValue(-evaporationVolume * settings.waterConsumptionMultiplier);
 
-                    /*
-                    // P1*V = n1*RT -> P1/n1 = RT/V = P2/n2
-                    // P2 = P1 * n2/n1 = P1 * (n1 + X) / n1 = P1 * (1 + X / n1) = P1 + P1 * X / n1
-                    // (n1 = P1 * V / RT)
-                    //    = P1 + P1 * X / (P1 * V / RT)
-                    //    = P1 + P1 * X / P1 / V * RT
-                    //    = P1 + X / V * RT
-                    //    = P1 + evapMol / V * RT
-                    const float WATER_MOL_PER_L = 55.55f;
-                    const float IDEAL_GAS_R = 8.3145e-2f; // L*bar/mol/K
-                    float pressureGain = WATER_MOL_PER_L * evaporationLiters * (boilingPoint + 273.15f) *
-                        IDEAL_GAS_R / BoilerSteamVolume(__instance.boilerWater.value);
-                    __instance.boilerPressure.AddNextValue(pressureGain);
-                    */
-                    float steamVolume = evaporationMass / SteamDensity(__instance.boilerPressure.value);
-                    float pressureGain = steamVolume / BoilerSteamVolume(__instance.boilerWater.value);
-                    __instance.boilerPressure.AddNextValue(pressureGain);
+                float steamVolume = evaporationMass / SteamTables.SteamDensity(__instance);
+                float pressureGain = __instance.boilerPressure.value * steamVolume / BoilerSteamVolume(__instance.boilerWater.value);
+                __instance.boilerPressure.AddNextValue(pressureGain);
 
-                    if (deltaTime > 0)
-                        HeadsUpDisplayBridge.instance?.UpdateSteamGeneration(loco, pressureGain / deltaTime * __instance.timeMult);
-                //  }
+                if (deltaTime > 0)
+                    HeadsUpDisplayBridge.instance?.UpdateSteamGeneration(loco, pressureGain / (deltaTime / __instance.timeMult));
 
                 // steam release
                 if (__instance.steamReleaser.value > 0.0f && __instance.boilerPressure.value > 0.0f)
@@ -317,16 +261,9 @@ namespace DvMod.SteamCutoff
                     float powerRatio = PowerRatio(cutoff, __instance.speed.value, chuff.dbgCurrentRevolution);
                     __instance.power.SetNextValue(steamChestPressureRatio * powerRatio * SteamLocoSimulation.POWER_CONST_HP);
 
-                    // USRA Light Mikado
-                    // cylinder displacement = 262L
-                    // 4 strokes / revolution
-                    // 4.4m driver circumference (see ChuffController)
-                    // ~909 strokes / km
-                    // (~0.25 strokes / s) / (km/h)
-                    float cylinderSteamVolumeConsumed = __instance.speed.value * 0.25f * 262f * cutoff * deltaTime;
-                    float boilerSteamVolumeConsumed = cylinderSteamVolumeConsumed * __instance.regulator.value;
                     float boilerSteamVolume = BoilerSteamVolume(__instance.boilerWater.value);
-                    float pressureConsumed = __instance.boilerPressure.value * boilerSteamVolumeConsumed / boilerSteamVolume;
+                    float boilerVolumeConsumed = CylinderSimulation.CylinderSteamMassFlow(__instance) / SteamTables.SteamDensity(__instance);
+                    float pressureConsumed =  __instance.boilerPressure.value * boilerVolumeConsumed / boilerSteamVolume;
                     __instance.boilerPressure.AddNextValue(-pressureConsumed);
                     if (deltaTime > 0)
                         HeadsUpDisplayBridge.instance?.UpdateSteamUsage(loco, pressureConsumed / deltaTime * __instance.timeMult);

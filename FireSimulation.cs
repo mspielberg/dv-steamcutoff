@@ -1,30 +1,42 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.Assertions;
 
 namespace DvMod.SteamCutoff
 {
     public class FireState
     {
+        private static readonly Dictionary<SteamLocoSimulation, FireState> states = new Dictionary<SteamLocoSimulation, FireState>();
+        public static FireState Instance(SteamLocoSimulation sim)
+        {
+            if (states.TryGetValue(sim, out var state))
+                return state;
+            return states[sim] = new FireState();
+        }
+
         private const float CarbonAtomicWeight = 12.011f;
         private const float OxygenAtomicWeight = 15.999f;
         private const float ExcessOxygenFactor = 1.75f; // needed beyond stoichiometric to ensure full combustion
         private const float OxygenMassFactor = 2f * OxygenAtomicWeight / CarbonAtomicWeight * ExcessOxygenFactor;
-        private const float CoalDensity = 1.4f; // kg/m^3
+        private const float CoalDensity = 1346f; // kg/m^3
 
         /// <summary>Coal chunk radius in m.</summary>
         private const float CoalPieceRadius = 0.02f; // coal passed over 1.25 in = 3.175 cm screen, ~4cm diameter
-        private const float CoalPieceVolume = (4f / 3f) * Mathf.PI * CoalPieceRadius * CoalPieceRadius;
+        private const float CoalPieceVolume = (4f / 3f) * Mathf.PI * CoalPieceRadius * CoalPieceRadius * CoalPieceRadius;
         private const float CoalPieceMass = CoalDensity * CoalPieceVolume;
         /// <summary>Time for coal chunk to burn away in seconds.</summary>
         private const float CoalMaxLifetime = 120f;
         /// <summary>Per-second rate of decrase in radius for each chunk with unlimited oxygen</summary>
         private const float MaximumRadiusChange = CoalPieceRadius / CoalMaxLifetime;
 
+        /// <summary>Coal consumption rate (kg/s) per unit surface area (m^2)</summary>
+        private const float MaxConsumptionRate = 0.222f;
+
         private const float CoalChunkMass = 2f; // kg
         private const float PiecesPerChunk = CoalChunkMass / CoalPieceMass;
 
+        /// <summary>Current oxygen supply as a fraction of oxygen demand.</summary>
+        private float oxygenAvailability;
         /// <summary>Average radius of pieces in each chunk.</summary>
         public readonly List<float> coalPieceRadii = new List<float>();
 
@@ -33,26 +45,45 @@ namespace DvMod.SteamCutoff
         /// <summary>Coal surface area in m^3.</summary>
         public float TotalSurfaceArea() => PiecesPerChunk * 4 * Mathf.PI * coalPieceRadii.Sum(r => Mathf.Pow(r, 2f));
         /// <summary>Coal consumption rate in kg/s with unlimited oxygen.</summary>
-        public float MaxCoalConsumptionRate() => TotalSurfaceArea();
+        public float MaxCoalConsumptionRate() => MaxConsumptionRate * TotalSurfaceArea();
         /// <summary>Maximum oxygen consumption in kg/s.</summary>
         public float MaxOxygenConsumptionRate() => MaxCoalConsumptionRate() * OxygenMassFactor;
 
-        public float CombustionRate(float oxygenAvailability) => Mathf.Min(oxygenAvailability * 2f, 1f);
+        /// <summary>Airflow through stack due to natural convection in kg/s.</summary>
+        /// Assuming 2m stack height, 0.5m stack radius, 3m overall height delta, 100 C in smokebox, 20 C at stack outlet.
+        /// https://www.engineeringtoolbox.com/natural-draught-ventilation-d_122.html : 2.86 m^3/s, 0.946 kg/m^3 @ 100 C
+        private const float PassiveStackFlow = 2.7f;
+        /// <summary>Mass ratio of air drawn in vs. high-pressure live or exhaust steam vented.</summary>
+        public const float DraftRatio = 1.5f;
+        /// <summary>Mass ratio of oxygen in atmospheric air.</summary>
+        public const float OxygenRatio = 1.5f;
 
-        public float CoalConsumptionRate(float oxygenAvailability) => CombustionRate(oxygenAvailability) * TotalSurfaceArea();
-
-        public float HeatYieldRate(float oxygenAvailability)
+        /// <summary>Set factors affecting oxygen supply for the fire.</summary>
+        /// <param name="exhaustFlow">Amount of steam being exhausted from cylinders and blower in kg/s.</summary>
+        public void SetOxygenSupply(float exhaustFlow)
         {
-            Assert.AreEqual(Mathf.Clamp01(oxygenAvailability), oxygenAvailability, "oxygenAvailability must be between 0 and 1");
-            float co = oxygenAvailability >= 0.5f ? 0.25f : oxygenAvailability / 2f;
-            float co2 = oxygenAvailability >= 0.5f ? (1.5f * oxygenAvailability) - 0.75f : 0f;
-            return TotalSurfaceArea() * (co + co2);
+            var oxygenSupply = (PassiveStackFlow + (exhaustFlow * DraftRatio)) * OxygenRatio;
+            oxygenAvailability = Mathf.Clamp01(oxygenSupply / MaxOxygenConsumptionRate());
         }
 
-        public void ConsumeCoal(float deltaTime, float oxygenAvailability)
+        /// <summary>Multiplier on combustion rate based on oxygen availability.</summary>
+        public float CombustionMultiplier() => Mathf.Min(oxygenAvailability * 2f, 1f);
+
+        public float CoalConsumptionRate() => CombustionMultiplier() * MaxCoalConsumptionRate();
+
+        private const float CoalCompositionCarbon = 0.6f;
+        private const float SpecificEnthalpy = 32.81e3f; // kJ/kg
+        /// <summary>Energy yield from coal combustion in kW.</summary>
+        public float HeatYieldRate()
         {
-            Assert.AreEqual(Mathf.Clamp01(oxygenAvailability), oxygenAvailability, "oxygenAvailability must be between 0 and 1");
-            var radiusChange = deltaTime * CombustionRate(oxygenAvailability) * MaximumRadiusChange;
+            float co = oxygenAvailability >= 0.5f ? 0.25f : oxygenAvailability / 2f;
+            float co2 = oxygenAvailability >= 0.5f ? (1.5f * oxygenAvailability) - 0.75f : 0f;
+            return CoalConsumptionRate() * (co + co2) * SpecificEnthalpy * CoalCompositionCarbon;
+        }
+
+        public void ConsumeCoal(float deltaTime)
+        {
+            var radiusChange = deltaTime * CombustionMultiplier() * MaximumRadiusChange;
             for (int i = coalPieceRadii.Count; i >= 0; i--)
             {
                 if (coalPieceRadii[i] <= radiusChange)
