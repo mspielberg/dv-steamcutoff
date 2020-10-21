@@ -94,24 +94,29 @@ namespace DvMod.SteamCutoff
         [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateBlowerDraftFireCoalTemp")]
         public static class SimulateFirePatch
         {
-            public const float BlowerMaxRate = 1f;
+            public const float BlowerMaxRate = 20f;
             public static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
             {
                 if (!enabled)
                     return true;
 
+                TrainCar loco = TrainCar.Resolve(__instance.gameObject);
                 FireState state = FireState.Instance(__instance);
                 float cylinderMassFlow = CylinderSimulation.CylinderSteamMassFlow(__instance);
-                float blowerMassFlow = __instance.GetBlowerBonus() * BlowerMaxRate;
+                float blowerMassFlow = __instance.GetBlowerBonusNormalized() * BlowerMaxRate;
                 __instance.boilerPressure.AddNextValue(
-                    -blowerMassFlow / SteamTables.SteamDensity(__instance.boilerPressure.value));
+                    -blowerMassFlow * (deltaTime / __instance.timeMult) /
+                    SteamTables.SteamDensity(__instance.boilerPressure.value) / BoilerSteamVolume(__instance.boilerWater.value));
 
-                state.SetOxygenSupply((cylinderMassFlow + blowerMassFlow) * Mathf.Lerp(0.05f, 1f, __instance.draft.value));
+                var exhaustFlow = cylinderMassFlow + blowerMassFlow;
+                HeadsUpDisplayBridge.instance?.UpdateExhaustFlow(loco, exhaustFlow);
+                var oxygenSupplyFlow = state.SetOxygenSupply(exhaustFlow, Mathf.Lerp(0.05f, 1f, __instance.draft.value));
+                HeadsUpDisplayBridge.instance?.UpdateOxygenSupply(loco, oxygenSupplyFlow);
 
                 if (__instance.fireOn.value == 1f && __instance.coalbox.value > 0f)
                 {
                     __instance.coalConsumptionRate = state.CoalConsumptionRate();
-                    float num = __instance.coalConsumptionRate * deltaTime / __instance.timeMult;
+                    float num = __instance.coalConsumptionRate * (deltaTime / __instance.timeMult);
                     __instance.TotalCoalConsumed += num;
                     __instance.coalbox.AddNextValue(-num);
                     state.ConsumeCoal(deltaTime / __instance.timeMult);
@@ -128,7 +133,7 @@ namespace DvMod.SteamCutoff
         [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateWater")]
         private static class SimulateWaterPatch
         {
-            public static void Postfix(SteamLocoSimulation __instance)
+            public static void Postfix(SteamLocoSimulation __instance, float deltaTime)
             {
                 if (!enabled)
                     return;
@@ -152,16 +157,29 @@ namespace DvMod.SteamCutoff
 
                 TrainCar loco = __instance.GetComponent<TrainCar>();
                 FireState state = FireState.Instance(__instance);
+
+                // water heating
+                float waterAdded = __instance.injector.value * 300f * (deltaTime / __instance.timeMult); // L
+                float waterHeatingEnergy = (SteamTables.BoilingPoint(__instance.boilerPressure.value) - 15f) * waterAdded; // kJ
+
                 // evaporation
-                float heatEnergyFromCoal = state.HeatYieldRate() * deltaTime / __instance.timeMult; // in kJ
-                float evaporationMass = heatEnergyFromCoal / SteamTables.SpecificEnthalpyOfVaporization(__instance);
+                float heatEnergyFromCoal = __instance.fireOn.value > 0 ? state.HeatYieldRate() * (deltaTime / __instance.timeMult) : 0; // in kJ
+                // Main.DebugLog($"time={deltaTime / __instance.timeMult}, heatRate={state.HeatYieldRate()} kW, heatEnergy={heatEnergyFromCoal} kJ, r={SteamTables.SpecificEnthalpyOfVaporization(__instance)}");
+                float evaporationMass = Mathf.Max(heatEnergyFromCoal - waterHeatingEnergy, 0f) / SteamTables.SpecificEnthalpyOfVaporization(__instance);
+                if (deltaTime > 0)
+                    HeadsUpDisplayBridge.instance?.UpdateWaterEvap(loco, evaporationMass / (deltaTime / __instance.timeMult));
                 float evaporationVolume = evaporationMass / SteamTables.WaterDensity(__instance);
 
                 __instance.boilerWater.AddNextValue(-evaporationVolume * settings.waterConsumptionMultiplier);
 
-                float steamVolume = evaporationMass / SteamTables.SteamDensity(__instance);
-                float pressureGain = __instance.boilerPressure.value * steamVolume / BoilerSteamVolume(__instance.boilerWater.value);
-                __instance.boilerPressure.AddNextValue(pressureGain);
+                float boilerSteamVolume = BoilerSteamVolume(__instance.boilerWater.value);
+                float boilerSteamMass = boilerSteamVolume * SteamTables.SteamDensity(__instance);
+                float newPressure = __instance.boilerPressure.value * (boilerSteamMass + evaporationMass) / boilerSteamMass;
+                __instance.boilerPressure.SetNextValue(newPressure);
+                float pressureGain = newPressure - __instance.boilerPressure.value;
+
+                HeadsUpDisplayBridge.instance?.UpdateBoilerSteamVolume(loco, boilerSteamVolume);
+                HeadsUpDisplayBridge.instance?.UpdateBoilerSteamMass(loco, boilerSteamVolume * SteamTables.SteamDensity(__instance));
 
                 if (deltaTime > 0)
                     HeadsUpDisplayBridge.instance?.UpdateSteamGeneration(loco, pressureGain / (deltaTime / __instance.timeMult));
@@ -250,7 +268,6 @@ namespace DvMod.SteamCutoff
 
                 var loco = __instance.GetComponent<TrainCar>();
                 float cutoff = Mathf.Pow(__instance.cutoff.value, settings.cutoffGamma) * 0.85f;
-                HeadsUpDisplayBridge.instance?.UpdateCutoffSetting(loco, cutoff);
                 if (cutoff > 0)
                 {
                     float boilerPressureRatio =
@@ -261,12 +278,13 @@ namespace DvMod.SteamCutoff
                     float powerRatio = PowerRatio(cutoff, __instance.speed.value, chuff.dbgCurrentRevolution);
                     __instance.power.SetNextValue(steamChestPressureRatio * powerRatio * SteamLocoSimulation.POWER_CONST_HP);
 
+                    float steamMassConsumed = CylinderSimulation.CylinderSteamMassFlow(__instance) * (deltaTime / __instance.timeMult);
+                    float boilerVolumeConsumed = steamMassConsumed / SteamTables.SteamDensity(__instance);
                     float boilerSteamVolume = BoilerSteamVolume(__instance.boilerWater.value);
-                    float boilerVolumeConsumed = CylinderSimulation.CylinderSteamMassFlow(__instance) / SteamTables.SteamDensity(__instance);
                     float pressureConsumed =  __instance.boilerPressure.value * boilerVolumeConsumed / boilerSteamVolume;
                     __instance.boilerPressure.AddNextValue(-pressureConsumed);
                     if (deltaTime > 0)
-                        HeadsUpDisplayBridge.instance?.UpdateSteamUsage(loco, pressureConsumed / deltaTime * __instance.timeMult);
+                        HeadsUpDisplayBridge.instance?.UpdateSteamUsage(loco, pressureConsumed / (deltaTime / __instance.timeMult));
                 }
                 return false;
             }
@@ -285,11 +303,15 @@ namespace DvMod.SteamCutoff
         [HarmonyPatch(typeof(SteamLocoSimulation), nameof(SteamLocoSimulation.AddCoalChunk))]
         public static class ShovelPatch
         {
+            public const float ChunkMass = 2f;
             public static bool Prefix(SteamLocoSimulation __instance)
             {
                 if (!enabled)
                     return true;
+                if (__instance.tenderCoal.value < ChunkMass || __instance.coalbox.max - __instance.coalbox.value < ChunkMass)
+                    return false;
                 __instance.tenderCoal.PassValueTo(__instance.coalbox, 2f);
+                FireState.Instance(__instance).AddCoalChunk();
                 return false;
             }
         }

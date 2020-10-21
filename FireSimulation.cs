@@ -11,7 +11,27 @@ namespace DvMod.SteamCutoff
         {
             if (states.TryGetValue(sim, out var state))
                 return state;
-            return states[sim] = new FireState();
+            return states[sim] = new FireState(sim.coalbox.value);
+        }
+
+        public static FireState? Instance(TrainCar car)
+        {
+            var sim = car.GetComponent<SteamLocoSimulation>();
+            if (sim != null)
+                return Instance(sim);
+            return null;
+        }
+
+        public FireState(float coalMass)
+        {
+            var wholeChunks = Mathf.Floor(coalMass / CoalChunkMass);
+            for (int i = 0; i < wholeChunks; i ++)
+                coalPieceRadii.Add(CoalPieceRadius);
+            var partialMass = coalMass % CoalChunkMass;
+            var massPerPiece = partialMass / PiecesPerChunk;
+            var volumePerPiece = massPerPiece / CoalDensity;
+            var radiusPerPiece = Mathf.Pow(volumePerPiece * (3f / 4f) / Mathf.PI, 1f / 3f);
+            coalPieceRadii.Add(radiusPerPiece);
         }
 
         private const float CarbonAtomicWeight = 12.011f;
@@ -36,7 +56,7 @@ namespace DvMod.SteamCutoff
         private const float PiecesPerChunk = CoalChunkMass / CoalPieceMass;
 
         /// <summary>Current oxygen supply as a fraction of oxygen demand.</summary>
-        private float oxygenAvailability;
+        public float oxygenAvailability;
         /// <summary>Average radius of pieces in each chunk.</summary>
         public readonly List<float> coalPieceRadii = new List<float>();
 
@@ -51,24 +71,26 @@ namespace DvMod.SteamCutoff
 
         /// <summary>Airflow through stack due to natural convection in kg/s.</summary>
         /// Assuming 2m stack height, 0.5m stack radius, 3m overall height delta, 100 C in smokebox, 20 C at stack outlet.
-        /// https://www.engineeringtoolbox.com/natural-draught-ventilation-d_122.html : 2.86 m^3/s, 0.946 kg/m^3 @ 100 C
-        private const float PassiveStackFlow = 2.7f;
+        /// https://www.engineeringtoolbox.com/natural-draught-ventilation-d_122.html
+        private const float PassiveStackFlow = 0.6f;
         /// <summary>Mass ratio of air drawn in vs. high-pressure live or exhaust steam vented.</summary>
         public const float DraftRatio = 1.5f;
         /// <summary>Mass ratio of oxygen in atmospheric air.</summary>
-        public const float OxygenRatio = 1.5f;
+        public const float OxygenRatio = 0.2f;
 
         /// <summary>Set factors affecting oxygen supply for the fire.</summary>
         /// <param name="exhaustFlow">Amount of steam being exhausted from cylinders and blower in kg/s.</summary>
-        public void SetOxygenSupply(float exhaustFlow)
+        /// <returns>Oxygen supply in kg/s.</returns>
+        public float SetOxygenSupply(float exhaustFlow, float damper)
         {
-            var oxygenSupply = (PassiveStackFlow + (exhaustFlow * DraftRatio)) * OxygenRatio;
+            var oxygenSupply = (PassiveStackFlow + (exhaustFlow * DraftRatio)) * OxygenRatio * damper;
             oxygenAvailability = Mathf.Clamp01(oxygenSupply / MaxOxygenConsumptionRate());
+            return oxygenSupply;
         }
 
         /// <summary>Multiplier on combustion rate based on oxygen availability.</summary>
         public float CombustionMultiplier() => Mathf.Min(oxygenAvailability * 2f, 1f);
-
+        /// <summary>Current coal consumption rate in kg/s.</summary>
         public float CoalConsumptionRate() => CombustionMultiplier() * MaxCoalConsumptionRate();
 
         private const float CoalCompositionCarbon = 0.6f;
@@ -84,7 +106,7 @@ namespace DvMod.SteamCutoff
         public void ConsumeCoal(float deltaTime)
         {
             var radiusChange = deltaTime * CombustionMultiplier() * MaximumRadiusChange;
-            for (int i = coalPieceRadii.Count; i >= 0; i--)
+            for (int i = coalPieceRadii.Count - 1; i >= 0; i--)
             {
                 if (coalPieceRadii[i] <= radiusChange)
                     coalPieceRadii.RemoveAt(i);

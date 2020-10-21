@@ -24,10 +24,17 @@ namespace DvMod.SteamCutoff
             }
         }
 
+        // fire
+        private readonly Pusher? exhaustFlowPusher;
+        private readonly Pusher? oxygenSupplyPusher;
+
+        // boiler
         private readonly Pusher? waterEvapPusher;
+        private readonly Pusher? boilerSteamVolumePusher;
+        private readonly Pusher? boilerSteamMassPusher;
+
         private readonly Pusher? steamGenerationPusher;
         private readonly Pusher? steamConsumptionPusher;
-        private readonly Pusher? cutoffSettingPusher;
 
         private static readonly Type[] RegisterPullArgumentTypes = new Type[]
         {
@@ -71,6 +78,31 @@ namespace DvMod.SteamCutoff
             }
 
             RegisterPull(
+                "Cutoff",
+                car => {
+                    var sim = car.GetComponent<SteamLocoSimulation>();
+                    if (sim != null)
+                        return CylinderSimulation.Cutoff(sim);
+                    return null;
+                },
+                v => $"{v:P0}");
+
+            RegisterPush(
+                out exhaustFlowPusher,
+                "Exhaust flow",
+                v => $"{v * 3600:F1} kg/h");
+
+            RegisterPush(
+                out oxygenSupplyPusher,
+                "Oxygen supply",
+                v => $"{v * 3600:F1} kg/h");
+
+            RegisterPull(
+                "Oxygen Avail",
+                car => FireState.Instance(car)?.oxygenAvailability,
+                v => $"{v:P0}");
+
+            RegisterPull(
                 "Coalbox",
                 car => car.GetComponent<SteamLocoSimulation>()?.coalbox?.value,
                 v => $"{v:F1} kg");
@@ -80,10 +112,25 @@ namespace DvMod.SteamCutoff
                 car => car.GetComponent<SteamLocoSimulation>()?.coalConsumptionRate,
                 v => $"{v:F1} kg/s");
 
+            RegisterPull(
+                "Heat yield",
+                car => ((car.GetComponent<SteamLocoSimulation>()?.fireOn?.value ?? 0) > 0) ? FireState.Instance(car)?.HeatYieldRate() : 0,
+                v => $"{v / 1000:F1} MW");
+
             RegisterPush(
                 out waterEvapPusher,
                 "Evaporation",
                 v => $"{v:F1} kg/s");
+
+            RegisterPush(
+                out boilerSteamVolumePusher,
+                "Boiler steam volume",
+                v => $"{v:F0} L");
+
+            RegisterPush(
+                out boilerSteamMassPusher,
+                "Boiler steam mass",
+                v => $"{v:F1} kg");
 
             RegisterPush(
                 out steamGenerationPusher,
@@ -94,21 +141,18 @@ namespace DvMod.SteamCutoff
                 out steamConsumptionPusher,
                 "Steam use",
                  v => $"{v * 1000:F0} mbar/s");
-
-            if (hudMod.Invoke(
-                "DvMod.HeadsUpDisplay.Registry.GetPusher",
-                out var cutoffSettingPusher,
-                new object?[] { "Cutoff" },
-                GetPusherArgumentTypes))
-            {
-                this.cutoffSettingPusher = (Pusher)cutoffSettingPusher;
-            }
         }
+
+        public void UpdateExhaustFlow(TrainCar car, float exhaustFlow) => exhaustFlowPusher?.Invoke(car, exhaustFlow);
+        public void UpdateOxygenSupply(TrainCar car, float oxygenSupply) => oxygenSupplyPusher?.Invoke(car, oxygenSupply);
 
         public void UpdateWaterEvap(TrainCar car, float evapKg)
         {
             waterEvapPusher?.Invoke(car, evapKg);
         }
+
+        public void UpdateBoilerSteamVolume(TrainCar car, float steamVolume) => boilerSteamVolumePusher?.Invoke(car, steamVolume);
+        public void UpdateBoilerSteamMass(TrainCar car, float steamMass) => boilerSteamMassPusher?.Invoke(car, steamMass);
 
         public void UpdateSteamGeneration(TrainCar car, float pressureRise)
         {
@@ -118,11 +162,6 @@ namespace DvMod.SteamCutoff
         public void UpdateSteamUsage(TrainCar car, float pressureDrop)
         {
             steamConsumptionPusher?.Invoke(car, pressureDrop);
-        }
-
-        public void UpdateCutoffSetting(TrainCar car, float cutoff)
-        {
-            cutoffSettingPusher?.Invoke(car, cutoff);
         }
     }
 }
