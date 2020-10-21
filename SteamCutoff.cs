@@ -228,7 +228,8 @@ namespace DvMod.SteamCutoff
             {
                 float injectionPower = cutoff;
                 float expansionPower = cutoff * -Mathf.Log(cutoff);
-                return injectionPower + expansionPower;
+                float totalPower = injectionPower + expansionPower;
+                return totalPower * (1f - (0.7f * Mathf.Exp(-cutoff * 15f)));
             }
 
             private static float PowerRatio(float cutoff, float speed, float revolution)
