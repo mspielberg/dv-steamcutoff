@@ -74,7 +74,7 @@ namespace DvMod.SteamCutoff
         /// https://www.engineeringtoolbox.com/natural-draught-ventilation-d_122.html
         private const float PassiveStackFlow = 0.6f;
         /// <summary>Mass ratio of air drawn in vs. high-pressure live or exhaust steam vented.</summary>
-        public const float DraftRatio = 1.5f;
+        public const float DraftRatio = 2.5f;
         /// <summary>Mass ratio of oxygen in atmospheric air.</summary>
         public const float OxygenRatio = 0.2f;
 
