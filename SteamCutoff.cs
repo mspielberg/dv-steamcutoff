@@ -1,6 +1,4 @@
 using HarmonyLib;
-using System.Collections.Generic;
-using System.Reflection.Emit;
 using UnityEngine;
 using UnityModManagerNet;
 
@@ -99,6 +97,8 @@ namespace DvMod.SteamCutoff
             {
                 if (!enabled)
                     return true;
+                if (deltaTime <= 0)
+                    return false;
 
                 TrainCar loco = TrainCar.Resolve(__instance.gameObject);
                 FireState state = FireState.Instance(__instance);
@@ -133,7 +133,7 @@ namespace DvMod.SteamCutoff
         [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateWater")]
         private static class SimulateWaterPatch
         {
-            public static void Postfix(SteamLocoSimulation __instance, float deltaTime)
+            public static void Postfix(SteamLocoSimulation __instance)
             {
                 if (!enabled)
                     return;
@@ -154,6 +154,8 @@ namespace DvMod.SteamCutoff
             {
                 if (!enabled)
                     return true;
+                if (deltaTime <= 0)
+                    return false;
 
                 TrainCar loco = __instance.GetComponent<TrainCar>();
                 FireState state = FireState.Instance(__instance);
@@ -166,8 +168,7 @@ namespace DvMod.SteamCutoff
                 float heatEnergyFromCoal = __instance.fireOn.value > 0 ? state.HeatYieldRate() * (deltaTime / __instance.timeMult) : 0; // in kJ
                 // Main.DebugLog($"time={deltaTime / __instance.timeMult}, heatRate={state.HeatYieldRate()} kW, heatEnergy={heatEnergyFromCoal} kJ, r={SteamTables.SpecificEnthalpyOfVaporization(__instance)}");
                 float evaporationMass = Mathf.Max(heatEnergyFromCoal - waterHeatingEnergy, 0f) / SteamTables.SpecificEnthalpyOfVaporization(__instance);
-                if (deltaTime > 0)
-                    HeadsUpDisplayBridge.instance?.UpdateWaterEvap(loco, evaporationMass / (deltaTime / __instance.timeMult));
+                HeadsUpDisplayBridge.instance?.UpdateWaterEvap(loco, evaporationMass / (deltaTime / __instance.timeMult));
                 float evaporationVolume = evaporationMass / SteamTables.WaterDensity(__instance);
 
                 __instance.boilerWater.AddNextValue(-evaporationVolume * settings.waterConsumptionMultiplier);
@@ -176,7 +177,6 @@ namespace DvMod.SteamCutoff
                 float boilerSteamMass = boilerSteamVolume * SteamTables.SteamDensity(__instance);
                 float newPressure = __instance.boilerPressure.value * (boilerSteamMass + evaporationMass) / boilerSteamMass;
                 __instance.boilerPressure.SetNextValue(newPressure);
-                float pressureGain = newPressure - __instance.boilerPressure.value;
 
                 HeadsUpDisplayBridge.instance?.UpdateBoilerSteamVolume(loco, boilerSteamVolume);
                 HeadsUpDisplayBridge.instance?.UpdateBoilerSteamMass(loco, boilerSteamVolume * SteamTables.SteamDensity(__instance));
@@ -262,6 +262,8 @@ namespace DvMod.SteamCutoff
             {
                 if (!enabled)
                     return true;
+                if (deltaTime <= 0)
+                    return false;
 
                 var loco = __instance.GetComponent<TrainCar>();
                 float cutoff = Mathf.Pow(__instance.cutoff.value, settings.cutoffGamma) * 0.85f;
@@ -280,8 +282,7 @@ namespace DvMod.SteamCutoff
                     float steamMassConsumed = CylinderSimulation.CylinderSteamMassFlow(__instance) * (deltaTime / __instance.timeMult);
                     float pressureConsumed =  __instance.boilerPressure.value * steamMassConsumed / boilerSteamMass;
                     __instance.boilerPressure.AddNextValue(-pressureConsumed);
-                    if (deltaTime > 0)
-                        HeadsUpDisplayBridge.instance?.UpdateSteamUsage(loco, steamMassConsumed / (deltaTime / __instance.timeMult));
+                    HeadsUpDisplayBridge.instance?.UpdateSteamUsage(loco, steamMassConsumed / (deltaTime / __instance.timeMult));
                 }
                 return false;
             }
@@ -307,7 +308,7 @@ namespace DvMod.SteamCutoff
                     return true;
                 if (__instance.tenderCoal.value < ChunkMass || __instance.coalbox.max - __instance.coalbox.value < ChunkMass)
                     return false;
-                __instance.tenderCoal.PassValueTo(__instance.coalbox, 2f);
+                __instance.tenderCoal.PassValueTo(__instance.coalbox, ChunkMass);
                 FireState.Instance(__instance).AddCoalChunk();
                 return false;
             }
