@@ -181,9 +181,6 @@ namespace DvMod.SteamCutoff
                 HeadsUpDisplayBridge.instance?.UpdateBoilerSteamVolume(loco, boilerSteamVolume);
                 HeadsUpDisplayBridge.instance?.UpdateBoilerSteamMass(loco, boilerSteamVolume * SteamTables.SteamDensity(__instance));
 
-                if (deltaTime > 0)
-                    HeadsUpDisplayBridge.instance?.UpdateSteamGeneration(loco, pressureGain / (deltaTime / __instance.timeMult));
-
                 // steam release
                 if (__instance.steamReleaser.value > 0.0f && __instance.boilerPressure.value > 0.0f)
                     __instance.boilerPressure.AddNextValue(-__instance.steamReleaser.value * 3.0f * deltaTime);
@@ -278,13 +275,13 @@ namespace DvMod.SteamCutoff
                     float powerRatio = PowerRatio(cutoff, __instance.speed.value, chuff.dbgCurrentRevolution);
                     __instance.power.SetNextValue(steamChestPressureRatio * powerRatio * SteamLocoSimulation.POWER_CONST_HP);
 
-                    float steamMassConsumed = CylinderSimulation.CylinderSteamMassFlow(__instance) * (deltaTime / __instance.timeMult);
-                    float boilerVolumeConsumed = steamMassConsumed / SteamTables.SteamDensity(__instance);
                     float boilerSteamVolume = BoilerSteamVolume(__instance.boilerWater.value);
-                    float pressureConsumed =  __instance.boilerPressure.value * boilerVolumeConsumed / boilerSteamVolume;
+                    float boilerSteamMass = boilerSteamVolume * SteamTables.SteamDensity(__instance);
+                    float steamMassConsumed = CylinderSimulation.CylinderSteamMassFlow(__instance) * (deltaTime / __instance.timeMult);
+                    float pressureConsumed =  __instance.boilerPressure.value * steamMassConsumed / boilerSteamMass;
                     __instance.boilerPressure.AddNextValue(-pressureConsumed);
                     if (deltaTime > 0)
-                        HeadsUpDisplayBridge.instance?.UpdateSteamUsage(loco, pressureConsumed / (deltaTime / __instance.timeMult));
+                        HeadsUpDisplayBridge.instance?.UpdateSteamUsage(loco, steamMassConsumed / (deltaTime / __instance.timeMult));
                 }
                 return false;
             }

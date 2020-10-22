@@ -33,7 +33,7 @@ namespace DvMod.SteamCutoff
         private readonly Pusher? boilerSteamVolumePusher;
         private readonly Pusher? boilerSteamMassPusher;
 
-        private readonly Pusher? steamGenerationPusher;
+        // cylinder
         private readonly Pusher? steamConsumptionPusher;
 
         private static readonly Type[] RegisterPullArgumentTypes = new Type[]
@@ -133,35 +133,18 @@ namespace DvMod.SteamCutoff
                 v => $"{v:F1} kg");
 
             RegisterPush(
-                out steamGenerationPusher,
-                "Steam gen",
-                v => $"{v * 1000:F0} mbar/s");
-
-            RegisterPush(
                 out steamConsumptionPusher,
-                "Steam use",
-                 v => $"{v * 1000:F0} mbar/s");
+                "Cylinder steam use",
+                 v => $"{v:F1} kg/s");
         }
 
         public void UpdateExhaustFlow(TrainCar car, float exhaustFlow) => exhaustFlowPusher?.Invoke(car, exhaustFlow);
         public void UpdateOxygenSupply(TrainCar car, float oxygenSupply) => oxygenSupplyPusher?.Invoke(car, oxygenSupply);
 
-        public void UpdateWaterEvap(TrainCar car, float evapKg)
-        {
-            waterEvapPusher?.Invoke(car, evapKg);
-        }
-
+        public void UpdateWaterEvap(TrainCar car, float evapKgPerS) => waterEvapPusher?.Invoke(car, evapKgPerS);
         public void UpdateBoilerSteamVolume(TrainCar car, float steamVolume) => boilerSteamVolumePusher?.Invoke(car, steamVolume);
         public void UpdateBoilerSteamMass(TrainCar car, float steamMass) => boilerSteamMassPusher?.Invoke(car, steamMass);
 
-        public void UpdateSteamGeneration(TrainCar car, float pressureRise)
-        {
-            steamGenerationPusher?.Invoke(car, pressureRise);
-        }
-
-        public void UpdateSteamUsage(TrainCar car, float pressureDrop)
-        {
-            steamConsumptionPusher?.Invoke(car, pressureDrop);
-        }
+        public void UpdateSteamUsage(TrainCar car, float steamKgPerS) => steamConsumptionPusher?.Invoke(car, steamKgPerS);
     }
 }
