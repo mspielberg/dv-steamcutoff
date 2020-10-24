@@ -110,7 +110,7 @@ namespace DvMod.SteamCutoff
             RegisterPull(
                 "Coal use",
                 car => car.GetComponent<SteamLocoSimulation>()?.coalConsumptionRate,
-                v => $"{v:F1} kg/s");
+                v => $"{v * 3600:F1} kg/h");
 
             RegisterPull(
                 "Heat yield",

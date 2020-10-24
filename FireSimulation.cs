@@ -100,7 +100,7 @@ namespace DvMod.SteamCutoff
         {
             float co = oxygenAvailability >= 0.5f ? 0.25f : oxygenAvailability / 2f;
             float co2 = oxygenAvailability >= 0.5f ? (1.5f * oxygenAvailability) - 0.75f : 0f;
-            return CoalConsumptionRate() * (co + co2) * SpecificEnthalpy * CoalCompositionCarbon;
+            return CoalConsumptionRate() * (co + co2) * SpecificEnthalpy * CoalCompositionCarbon * Main.settings.boilerThermalEfficiency;
         }
 
         public void ConsumeCoal(float deltaTime)

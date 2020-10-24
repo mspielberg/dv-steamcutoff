@@ -66,8 +66,7 @@ namespace DvMod.SteamCutoff
 
         public class Settings : UnityModManager.ModSettings, IDrawable
         {
-            [Draw("Boiler steam generation rate")] public float steamGenerationRate = 0.5f;
-            [Draw("Water consumption multiplier")] public float waterConsumptionMultiplier = 4.0f;
+            [Draw("Boiler thermal efficiency")] public float boilerThermalEfficiency = 0.5f;
             [Draw("Cutoff wheel gamma")] public float cutoffGamma = 1.9f;
             [Draw("Max boiler pressure")] public float safetyValveThreshold = 14f;
 
@@ -171,7 +170,7 @@ namespace DvMod.SteamCutoff
                 HeadsUpDisplayBridge.instance?.UpdateWaterEvap(loco, evaporationMass / (deltaTime / __instance.timeMult));
                 float evaporationVolume = evaporationMass / SteamTables.WaterDensity(__instance);
 
-                __instance.boilerWater.AddNextValue(-evaporationVolume * settings.waterConsumptionMultiplier);
+                __instance.boilerWater.AddNextValue(-evaporationVolume);
 
                 float boilerSteamVolume = BoilerSteamVolume(__instance.boilerWater.value);
                 float boilerSteamMass = boilerSteamVolume * SteamTables.SteamDensity(__instance);
