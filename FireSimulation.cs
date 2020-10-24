@@ -67,7 +67,7 @@ namespace DvMod.SteamCutoff
         /// <summary>Coal consumption rate in kg/s with unlimited oxygen.</summary>
         public float MaxCoalConsumptionRate() => MaxConsumptionRate * TotalSurfaceArea();
         /// <summary>Maximum oxygen consumption in kg/s.</summary>
-        public float MaxOxygenConsumptionRate() => MaxCoalConsumptionRate() * OxygenMassFactor;
+        public float MaxOxygenConsumptionRate() => MaxCoalConsumptionRate() * OxygenMassFactor * CoalCompositionCarbon;
 
         /// <summary>Airflow through stack due to natural convection in kg/s.</summary>
         /// Assuming 2m stack height, 0.5m stack radius, 3m overall height delta, 100 C in smokebox, 20 C at stack outlet.
