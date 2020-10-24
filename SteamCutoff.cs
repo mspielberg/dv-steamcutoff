@@ -174,8 +174,9 @@ namespace DvMod.SteamCutoff
 
                 float boilerSteamVolume = BoilerSteamVolume(__instance.boilerWater.value);
                 float boilerSteamMass = boilerSteamVolume * SteamTables.SteamDensity(__instance);
-                float newPressure = __instance.boilerPressure.value * (boilerSteamMass + evaporationMass) / boilerSteamMass;
-                __instance.boilerPressure.SetNextValue(newPressure);
+                float newPressure = ((__instance.boilerPressure.value + 1f) * (boilerSteamMass + evaporationMass) / boilerSteamMass) - 1f;
+                __instance.boilerPressure.AddNextValue(newPressure - __instance.boilerPressure.value);
+                Main.DebugLog($"oldPressure={__instance.boilerPressure.value}, oldMass={boilerSteamMass}, newMass={boilerSteamMass + evaporationMass}, newPressure={newPressure}");
 
                 HeadsUpDisplayBridge.instance?.UpdateBoilerSteamVolume(loco, boilerSteamVolume);
                 HeadsUpDisplayBridge.instance?.UpdateBoilerSteamMass(loco, boilerSteamVolume * SteamTables.SteamDensity(__instance));
