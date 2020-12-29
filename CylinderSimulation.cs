@@ -15,6 +15,6 @@ namespace DvMod.SteamCutoff
         public static float CylinderSteamVolumetricFlow(SteamLocoSimulation sim) =>
             sim.speed.value * 0.25f * CylinderVolume * Cutoff(sim);
         public static float CylinderSteamMassFlow(SteamLocoSimulation sim) =>
-            CylinderSteamVolumetricFlow(sim) * SteamTables.SteamDensity(SteamChestPressure(sim));
+            sim.regulator.value == 0 ? 0 : CylinderSteamVolumetricFlow(sim) * SteamTables.SteamDensity(SteamChestPressure(sim));
     }
 }
