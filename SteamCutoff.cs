@@ -26,6 +26,8 @@ namespace DvMod.SteamCutoff
             modEntry.OnToggle = OnToggle;
             modEntry.OnUnload = OnUnload;
 
+            Commands.Register();
+
             return true;
         }
 
