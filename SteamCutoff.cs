@@ -180,7 +180,7 @@ namespace DvMod.SteamCutoff
                 else if (__instance.boilerPressure.value <= (settings.safetyValveThreshold - SAFETY_VALVE_BLOWOFF) && __instance.safetyPressureValve.value == 1f)
                     __instance.safetyPressureValve.SetNextValue(0f);
                 if ( __instance.safetyPressureValve.value == 1f)
-                    __instance.boilerPressure.AddNextValue(-__instance.safetyPressureValve.value * 5.0f * deltaTime);
+                    __instance.boilerPressure.AddNextValue(-10.0f * deltaTime);
 
                 // passive leakage
                 __instance.pressureLeakMultiplier = Mathf.Lerp(
