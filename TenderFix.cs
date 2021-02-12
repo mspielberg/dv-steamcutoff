@@ -16,8 +16,9 @@ namespace DvMod.SteamCutoff
         private static IEnumerator EnstrongJoints(TenderCouplerJointEnstronger __instance, Coupler coupler)
         {
             coupler.DestroyRigidJoint();
-            coupler.springyCJ.breakForce = float.PositiveInfinity;
-            coupler.springyCJ.linearLimit = new SoftJointLimit
+            var cj = coupler.springyCJ;
+            cj.breakForce = float.PositiveInfinity;
+            cj.linearLimit = new SoftJointLimit
             {
                 limit = 0.8f
             };
@@ -25,14 +26,11 @@ namespace DvMod.SteamCutoff
             {
                 yield return WaitFor.Seconds(0.5f);
             }
-            coupler.springyCJ.linearLimit = new SoftJointLimit
-            {
-                limit = 0.1f
-            };
-            coupler.springyCJ.linearLimitSpring = new SoftJointLimitSpring
-            {
-                spring = Coupler.SPRINGY_JOINT_LIMIT_SPRING_TIGHT,
-                damper = Coupler.SPRINGY_JOINT_LIMIT_DAMPER_TIGHT
+            cj.anchor += Vector3.forward * -0.8f;
+            cj.linearLimit = new SoftJointLimit { limit = 0f };
+            cj.linearLimitSpring = new SoftJointLimitSpring {
+                spring = 0f,
+                damper = 0f,
             };
             __instance.enstrongCoro = null;
         }
