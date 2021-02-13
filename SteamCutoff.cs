@@ -24,6 +24,8 @@ namespace DvMod.SteamCutoff
             modEntry.OnToggle = OnToggle;
             modEntry.OnUnload = OnUnload;
 
+            Commands.Register();
+
             return true;
         }
 
@@ -191,8 +193,8 @@ namespace DvMod.SteamCutoff
                     __instance.safetyPressureValve.SetNextValue(1f);
                 else if (__instance.boilerPressure.value <= (settings.safetyValveThreshold - SAFETY_VALVE_BLOWOFF) && __instance.safetyPressureValve.value == 1f)
                     __instance.safetyPressureValve.SetNextValue(0f);
-                if (__instance.safetyPressureValve.value == 1f)
-                    __instance.boilerPressure.AddNextValue(-__instance.safetyPressureValve.value * 5.0f * deltaTime);
+                if ( __instance.safetyPressureValve.value == 1f)
+                    __instance.boilerPressure.AddNextValue(-10.0f * deltaTime);
 
                 // passive leakage
                 __instance.pressureLeakMultiplier = Mathf.Lerp(
@@ -243,7 +245,7 @@ namespace DvMod.SteamCutoff
                 float injectionPower = cutoff;
                 float expansionPower = cutoff * -Mathf.Log(cutoff);
                 float totalPower = injectionPower + expansionPower;
-                return totalPower * (1f - (0.7f * Mathf.Exp(-cutoff * 15f)));
+                return totalPower * (1f - (0.7f * Mathf.Exp(-15f * cutoff)));
             }
 
             private static float PowerRatio(float cutoff, float speed, float revolution)
