@@ -3,8 +3,18 @@ using UnityEngine;
 
 namespace DvMod.SteamCutoff
 {
+    [HarmonyPatch(typeof(IndicatorsSteam), nameof(IndicatorsSteam.Start))]
+    public static class IndicatorsSteamStartPatch
+    {
+        public static void Postfix(IndicatorsSteam __instance)
+        {
+            __instance.coalInFireboxScaler.maxValue = Constants.CoalboxCapacity;
+            __instance.coalInFireboxSlider.maxValue = Constants.CoalboxCapacity;
+        }
+    }
+
     [HarmonyPatch(typeof(IndicatorsSteam), nameof(IndicatorsSteam.Update))]
-    public static class IndicatorsSteamPatch
+    public static class IndicatorsSteamUpdatePatch
     {
         public const float BallSize = 0.015f;
         public const float MinLevel = 0.2f;

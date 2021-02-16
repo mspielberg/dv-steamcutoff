@@ -90,6 +90,15 @@ namespace DvMod.SteamCutoff
             }
         }
 
+        [HarmonyPatch(typeof(SteamLocoSimulation), nameof(SteamLocoSimulation.Awake))]
+        public static class AwakePatch
+        {
+            public static void Postfix(SteamLocoSimulation __instance)
+            {
+                __instance.coalbox.max = Constants.CoalboxCapacity;
+            }
+        }
+
         [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateBlowerDraftFireCoalTemp")]
         public static class SimulateFirePatch
         {
