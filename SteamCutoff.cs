@@ -66,30 +66,6 @@ namespace DvMod.SteamCutoff
                 mod?.Logger.Log(message);
         }
 
-        public class Settings : UnityModManager.ModSettings, IDrawable
-        {
-            [Draw("Boiler thermal efficiency")] public float boilerThermalEfficiency = 0.5f;
-            [Draw("Cutoff wheel gamma")] public float cutoffGamma = 1.9f;
-            [Draw("Max boiler pressure")] public float safetyValveThreshold = 14f;
-
-            [Draw("Enable detailed low-speed simulation")] public bool enableLowSpeedSimulation = true;
-            [Draw("Low-speed simulation transition start", VisibleOn = "enableLowSpeedSimulation|true")]
-            public float lowSpeedTransitionStart = 10f;
-            [Draw("Low-speed simulation transition width", VisibleOn = "enableLowSpeedSimulation|true")]
-            public float lowSpeedTransitionWidth = 5f;
-
-            [Draw("Enable logging")] public bool enableLogging = false;
-
-            override public void Save(UnityModManager.ModEntry entry) {
-                Save(this, entry);
-            }
-
-            public void OnChange() {
-                cutoffGamma = Mathf.Max(cutoffGamma, 0.1f);
-                safetyValveThreshold = Mathf.Clamp(safetyValveThreshold, 0f, 20f);
-            }
-        }
-
         [HarmonyPatch(typeof(SteamLocoSimulation), nameof(SteamLocoSimulation.Awake))]
         public static class AwakePatch
         {
@@ -174,9 +150,17 @@ namespace DvMod.SteamCutoff
                 float waterAdded = __instance.injector.value * 300f * (deltaTime / __instance.timeMult); // L
                 float waterHeatingEnergy = (SteamTables.BoilingPoint(__instance.boilerPressure.value) - 15f) * waterAdded; // kJ
 
+                // heat from boiler
+                var heatPower = state.SmoothedHeatYieldRate(__instance.fireOn.value > 0f); // in kW
+                __instance.temperature.SetNextValue(Mathf.Lerp(
+                    SteamTables.BoilingPoint(__instance.boilerPressure.value),
+                    1200f,
+                    Mathf.Pow(
+                        Mathf.InverseLerp(0, Constants.TemperatureGaugeMaxPower, heatPower),
+                        Constants.TemperatureGaugeGamma)));
+                float heatEnergyFromCoal = heatPower * (deltaTime / __instance.timeMult); // in kJ
+
                 // evaporation
-                float heatEnergyFromCoal = __instance.fireOn.value > 0 ? state.HeatYieldRate() * (deltaTime / __instance.timeMult) : 0; // in kJ
-                // Main.DebugLog($"time={deltaTime / __instance.timeMult}, heatRate={state.HeatYieldRate()} kW, heatEnergy={heatEnergyFromCoal} kJ, r={SteamTables.SpecificEnthalpyOfVaporization(__instance)}");
                 float evaporationMass = Mathf.Max(heatEnergyFromCoal - waterHeatingEnergy, 0f) / SteamTables.SpecificEnthalpyOfVaporization(__instance);
                 HeadsUpDisplayBridge.instance?.UpdateWaterEvap(loco, evaporationMass / (deltaTime / __instance.timeMult));
                 float evaporationVolume = evaporationMass / SteamTables.WaterDensity(__instance);
@@ -187,7 +171,7 @@ namespace DvMod.SteamCutoff
                 float boilerSteamMass = boilerSteamVolume * SteamTables.SteamDensity(__instance);
                 float newPressure = ((__instance.boilerPressure.value + 1f) * (boilerSteamMass + evaporationMass) / boilerSteamMass) - 1f;
                 __instance.boilerPressure.AddNextValue(newPressure - __instance.boilerPressure.value);
-                Main.DebugLog($"oldPressure={__instance.boilerPressure.value}, oldMass={boilerSteamMass}, newMass={boilerSteamMass + evaporationMass}, newPressure={newPressure}");
+                // Main.DebugLog($"oldPressure={__instance.boilerPressure.value}, oldMass={boilerSteamMass}, newMass={boilerSteamMass + evaporationMass}, newPressure={newPressure}");
 
                 HeadsUpDisplayBridge.instance?.UpdateBoilerSteamVolume(loco, boilerSteamVolume);
                 HeadsUpDisplayBridge.instance?.UpdateBoilerSteamMass(loco, boilerSteamVolume * SteamTables.SteamDensity(__instance));

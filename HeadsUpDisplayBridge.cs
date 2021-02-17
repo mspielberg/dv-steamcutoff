@@ -114,7 +114,7 @@ namespace DvMod.SteamCutoff
 
             RegisterPull(
                 "Heat yield",
-                car => ((car.GetComponent<SteamLocoSimulation>()?.fireOn?.value ?? 0) > 0) ? FireState.Instance(car)?.HeatYieldRate() : 0,
+                car => FireState.Instance(car)?.smoothedHeatYieldRate,
                 v => $"{v / 1000:F1} MW");
 
             RegisterPush(

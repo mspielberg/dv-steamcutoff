@@ -50,6 +50,8 @@ namespace DvMod.SteamCutoff
         public float oxygenAvailability;
         /// <summary>Average radius of pieces in each chunk.</summary>
         public readonly List<float> coalChunkMasses = new List<float>();
+        public float smoothedHeatYieldRate;
+        private float smoothedHeatYieldRateVel;
 
         public void AddCoalChunk() => coalChunkMasses.Insert(0, CoalChunkMass);
 
@@ -90,8 +92,14 @@ namespace DvMod.SteamCutoff
 
         private const float CoalCompositionCarbon = 0.6f;
         private const float SpecificEnthalpy = 32.81e3f; // kJ/kg
+
         /// <summary>Energy yield from coal combustion in kW.</summary>
-        public float HeatYieldRate()
+        public float SmoothedHeatYieldRate(bool fireOn)
+        {
+            return smoothedHeatYieldRate = Mathf.SmoothDamp(smoothedHeatYieldRate, fireOn ? InstantaneousHeatYieldRate() : 0f, ref smoothedHeatYieldRateVel, 2f);
+        }
+
+        private float InstantaneousHeatYieldRate()
         {
             float co = oxygenAvailability >= 0.5f ? 0.25f : oxygenAvailability / 2f;
             float co2 = oxygenAvailability >= 0.5f ? (1.5f * oxygenAvailability) - 0.75f : 0f;
