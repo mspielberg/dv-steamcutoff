@@ -296,14 +296,20 @@ namespace DvMod.SteamCutoff
         [HarmonyPatch(typeof(SteamLocoSimulation), nameof(SteamLocoSimulation.AddCoalChunk))]
         public static class ShovelPatch
         {
-            public const float ChunkMass = 2f;
             public static bool Prefix(SteamLocoSimulation __instance)
             {
                 if (!enabled)
                     return true;
-                if (__instance.tenderCoal.value < ChunkMass || __instance.coalbox.max - __instance.coalbox.value < ChunkMass)
+                if (__instance.tenderCoal.value < FireState.CoalChunkMass ||
+                    __instance.coalbox.max - __instance.coalbox.value < FireState.CoalChunkMass)
+                {
                     return false;
-                __instance.tenderCoal.PassValueTo(__instance.coalbox, ChunkMass);
+                }
+                __instance.tenderCoal.PassValueTo(__instance.coalbox, FireState.CoalChunkMass);
+                if (__instance.fireOn.value == 0f && __instance.temperature.value > 80f)
+                {
+                    __instance.fireOn.SetValue(1f);
+                }
                 FireState.Instance(__instance).AddCoalChunk();
                 return false;
             }

@@ -43,7 +43,7 @@ namespace DvMod.SteamCutoff
         /// <summary>Coal consumption rate (kg/s) per unit surface area (m^2)</summary>
         private const float MaxConsumptionRate = 0.013f;
 
-        private const float CoalChunkMass = 2f; // kg
+        public const float CoalChunkMass = 10f; // kg
         private const float PiecesPerChunk = CoalChunkMass / CoalPieceMass;
 
         /// <summary>Current oxygen supply as a fraction of oxygen demand.</summary>
