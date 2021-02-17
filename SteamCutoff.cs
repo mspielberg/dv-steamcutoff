@@ -120,7 +120,7 @@ namespace DvMod.SteamCutoff
 
                 var exhaustFlow = cylinderMassFlow + blowerMassFlow;
                 HeadsUpDisplayBridge.instance?.UpdateExhaustFlow(loco, exhaustFlow);
-                var oxygenSupplyFlow = state.SetOxygenSupply(exhaustFlow, Mathf.Lerp(0.05f, 1f, __instance.draft.value));
+                var oxygenSupplyFlow = state.SetOxygenSupply(exhaustFlow, Mathf.Lerp(1f, 0.05f, __instance.draft.value));
                 HeadsUpDisplayBridge.instance?.UpdateOxygenSupply(loco, oxygenSupplyFlow);
 
                 if (__instance.fireOn.value == 1f && __instance.coalbox.value > 0f)

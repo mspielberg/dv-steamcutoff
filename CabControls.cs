@@ -16,9 +16,9 @@ namespace DvMod.SteamCutoff
                 {
                     leverSpec.invertDirection ^= true;
                 }
-                else if (spec.name == "C draft" && spec is Puller pullerSpec)
+                else if (spec.name == "C injector" && spec is Rotary rotarySpec)
                 {
-                    pullerSpec.invertDirection ^= true;
+                    rotarySpec.scrollWheelHoverScroll *= 0.2f;
                 }
             }
         }
