@@ -26,12 +26,7 @@ namespace DvMod.SteamCutoff
         {
             var wholeChunks = Mathf.Floor(coalMass / CoalChunkMass);
             for (int i = 0; i < wholeChunks; i ++)
-                coalPieceRadii.Add(CoalPieceRadius);
-            var partialMass = coalMass % CoalChunkMass;
-            var massPerPiece = partialMass / PiecesPerChunk;
-            var volumePerPiece = massPerPiece / CoalDensity;
-            var radiusPerPiece = Mathf.Pow(volumePerPiece * (3f / 4f) / Mathf.PI, 1f / 3f);
-            coalPieceRadii.Add(radiusPerPiece);
+                coalChunkMasses.Add(CoalChunkMass);
         }
 
         private const float CarbonAtomicWeight = 12.011f;
@@ -44,13 +39,9 @@ namespace DvMod.SteamCutoff
         private const float CoalPieceRadius = 0.02f; // coal passed over 1.25 in = 3.175 cm screen, ~4cm diameter
         private const float CoalPieceVolume = (4f / 3f) * Mathf.PI * CoalPieceRadius * CoalPieceRadius * CoalPieceRadius;
         private const float CoalPieceMass = CoalDensity * CoalPieceVolume;
-        /// <summary>Time for coal chunk to burn away in seconds.</summary>
-        private const float CoalMaxLifetime = 120f;
-        /// <summary>Per-second rate of decrase in radius for each chunk with unlimited oxygen</summary>
-        private const float MaximumRadiusChange = CoalPieceRadius / CoalMaxLifetime;
 
         /// <summary>Coal consumption rate (kg/s) per unit surface area (m^2)</summary>
-        private const float MaxConsumptionRate = 0.222f;
+        private const float MaxConsumptionRate = 0.013f;
 
         private const float CoalChunkMass = 2f; // kg
         private const float PiecesPerChunk = CoalChunkMass / CoalPieceMass;
@@ -58,12 +49,16 @@ namespace DvMod.SteamCutoff
         /// <summary>Current oxygen supply as a fraction of oxygen demand.</summary>
         public float oxygenAvailability;
         /// <summary>Average radius of pieces in each chunk.</summary>
-        public readonly List<float> coalPieceRadii = new List<float>();
+        public readonly List<float> coalChunkMasses = new List<float>();
 
-        public void AddCoalChunk() => coalPieceRadii.Insert(0, CoalPieceRadius);
+        public void AddCoalChunk() => coalChunkMasses.Insert(0, CoalChunkMass);
 
-        /// <summary>Coal surface area in m^3.</summary>
-        public float TotalSurfaceArea() => PiecesPerChunk * 4 * Mathf.PI * coalPieceRadii.Sum(r => Mathf.Pow(r, 2f));
+        private float ChunkPieceRadius(float chunkMass) => Mathf.Pow(chunkMass / PiecesPerChunk / CoalDensity / (4f/3f) / Mathf.PI, 1f/3f);
+        private float ChunkPieceSurfaceArea(float chunkMass) => Mathf.Pow(ChunkPieceRadius(chunkMass), 2) * 4 * Mathf.PI;
+        private float ChunkTotalSurfaceArea(float chunkMass) => PiecesPerChunk * ChunkPieceSurfaceArea(chunkMass);
+
+        /// <summary>Coal surface area in m^2.</summary>
+        public float TotalSurfaceArea() => coalChunkMasses.Sum(ChunkTotalSurfaceArea);
         /// <summary>Coal consumption rate in kg/s with unlimited oxygen.</summary>
         public float MaxCoalConsumptionRate() => MaxConsumptionRate * TotalSurfaceArea();
         /// <summary>Maximum oxygen consumption in kg/s.</summary>
@@ -74,9 +69,9 @@ namespace DvMod.SteamCutoff
         /// https://www.engineeringtoolbox.com/natural-draught-ventilation-d_122.html
         private const float PassiveStackFlow = 0.6f;
         /// <summary>Mass ratio of air drawn in vs. high-pressure live or exhaust steam vented.</summary>
-        public const float DraftRatio = 2.5f;
+        public const float DraftRatio = 1.85f;
         /// <summary>Mass ratio of oxygen in atmospheric air.</summary>
-        public const float OxygenRatio = 0.2f;
+        public const float OxygenRatio = 0.23f;
 
         /// <summary>Set factors affecting oxygen supply for the fire.</summary>
         /// <param name="exhaustFlow">Amount of steam being exhausted from cylinders and blower in kg/s.</summary>
@@ -105,14 +100,22 @@ namespace DvMod.SteamCutoff
 
         public void ConsumeCoal(float deltaTime)
         {
-            var radiusChange = deltaTime * CombustionMultiplier() * MaximumRadiusChange;
-            for (int i = coalPieceRadii.Count - 1; i >= 0; i--)
+            var combustionRatePerSurfaceArea = CombustionMultiplier() * MaxConsumptionRate * deltaTime;
+            for (int i = coalChunkMasses.Count - 1; i >= 0; i--)
             {
-                if (coalPieceRadii[i] <= radiusChange)
-                    coalPieceRadii.RemoveAt(i);
-                else
-                    coalPieceRadii[i] -= radiusChange;
+                var chunkMass = coalChunkMasses[i];
+                coalChunkMasses[i] = chunkMass - (combustionRatePerSurfaceArea * ChunkTotalSurfaceArea(chunkMass));
             }
+        }
+
+        public void LogChunk()
+        {
+            var chunkMass = coalChunkMasses[0];
+            var pieceMass = chunkMass / PiecesPerChunk;
+            var pieceRadius = ChunkPieceRadius(chunkMass);
+            var pieceSurfaceArea = ChunkPieceSurfaceArea(chunkMass);
+            var maxCombustionRate = pieceSurfaceArea * MaxConsumptionRate;
+            // Debug.Log($"chunkMass={chunkMass},pieceMass={pieceMass},pieceRadius={pieceRadius},pieceSurfaceArea={pieceSurfaceArea},pieceCombustionRate={maxCombustionRate}");
         }
     }
 }

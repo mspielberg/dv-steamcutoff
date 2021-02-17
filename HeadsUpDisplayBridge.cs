@@ -120,7 +120,7 @@ namespace DvMod.SteamCutoff
             RegisterPush(
                 out waterEvapPusher,
                 "Evaporation",
-                v => $"{v:F1} kg/s");
+                v => $"{v * 3600:F1} kg/h");
 
             RegisterPush(
                 out boilerSteamVolumePusher,
@@ -135,7 +135,7 @@ namespace DvMod.SteamCutoff
             RegisterPush(
                 out steamConsumptionPusher,
                 "Cylinder steam use",
-                 v => $"{v:F1} kg/s");
+                 v => $"{v * 3600:F1} kg/h");
         }
 
         public void UpdateExhaustFlow(TrainCar car, float exhaustFlow) => exhaustFlowPusher?.Invoke(car, exhaustFlow);
