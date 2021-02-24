@@ -8,5 +8,6 @@ namespace DvMod.SteamCutoff
         public const float TemperatureGaugeGamma = 0.4f;
 
         public const float CutoffGamma = 1.9f;
+        public const float InjectorGamma = 2f;
     }
 }

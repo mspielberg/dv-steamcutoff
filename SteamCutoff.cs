@@ -120,15 +120,23 @@ namespace DvMod.SteamCutoff
         [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateWater")]
         private static class SimulateWaterPatch
         {
-            public static void Postfix(SteamLocoSimulation __instance)
+            public static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
             {
                 if (!enabled)
-                    return;
+                    return true;
+
+                var injector = Mathf.Pow(__instance.injector.value, Constants.InjectorGamma);
+
+                var waterVolumeToInject = 3000f * injector * deltaTime;
+                __instance.tenderWater.PassValueToNext(__instance.boilerWater, waterVolumeToInject);
+                __instance.boilerWater.AddNextValue(-4000f * __instance.waterDump.value * deltaTime);
 
                 float steamVolumeBefore = BoilerSteamVolume(__instance.boilerWater.value);
                 float steamVolumeAfter = BoilerSteamVolume(__instance.boilerWater.nextValue);
                 float pressureAfter = __instance.boilerPressure.value * steamVolumeBefore / steamVolumeAfter;
                 __instance.boilerPressure.SetNextValue(pressureAfter);
+
+                return false;
             }
         }
 
@@ -148,7 +156,7 @@ namespace DvMod.SteamCutoff
                 FireState state = FireState.Instance(__instance);
 
                 // water heating
-                float waterAdded = __instance.injector.value * 300f * (deltaTime / __instance.timeMult); // L
+                float waterAdded = __instance.boilerWater.nextValue - __instance.boilerWater.value; // L
                 float waterHeatingEnergy = (SteamTables.BoilingPoint(__instance.boilerPressure.value) - 15f) * waterAdded; // kJ
 
                 // heat from boiler
