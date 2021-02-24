@@ -27,6 +27,8 @@ namespace DvMod.SteamCutoff
             var wholeChunks = Mathf.Floor(coalMass / CoalChunkMass);
             for (int i = 0; i < wholeChunks; i ++)
                 coalChunkMasses.Add(CoalChunkMass);
+            if (coalMass % CoalChunkMass > 0f)
+                coalChunkMasses.Add(coalMass % CoalChunkMass);
         }
 
         private const float CarbonAtomicWeight = 12.011f;
