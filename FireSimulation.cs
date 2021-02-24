@@ -48,6 +48,8 @@ namespace DvMod.SteamCutoff
         public const float CoalChunkMass = 10f; // kg
         private const float PiecesPerChunk = CoalChunkMass / CoalPieceMass;
 
+        /// <summary>Current oxygen supply as kg/s.</summary>
+        public float oxygenSupply;
         /// <summary>Current oxygen supply as a fraction of oxygen demand.</summary>
         public float oxygenAvailability;
         /// <summary>Average radius of pieces in each chunk.</summary>
@@ -82,7 +84,7 @@ namespace DvMod.SteamCutoff
         /// <returns>Oxygen supply in kg/s.</returns>
         public float SetOxygenSupply(float exhaustFlow, float damper)
         {
-            var oxygenSupply = (PassiveStackFlow + (exhaustFlow * DraftRatio)) * OxygenRatio * damper;
+            oxygenSupply = (PassiveStackFlow + (exhaustFlow * DraftRatio)) * OxygenRatio * damper;
             oxygenAvailability = Mathf.Clamp01(oxygenSupply / MaxOxygenConsumptionRate());
             return oxygenSupply;
         }
