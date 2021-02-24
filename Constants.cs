@@ -6,5 +6,7 @@ namespace DvMod.SteamCutoff
 
         public const float TemperatureGaugeMaxPower = 15e3f;
         public const float TemperatureGaugeGamma = 0.4f;
+
+        public const float CutoffGamma = 1.9f;
     }
 }

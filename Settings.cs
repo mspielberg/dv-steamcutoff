@@ -10,14 +10,6 @@ namespace DvMod.SteamCutoff
             [Draw("Boiler thermal efficiency")]
             public float boilerThermalEfficiency = 0.8f;
 
-            [Draw("Temp gauge max power")]
-            public float temperatureGaugeMaxPower = 10f;
-            [Draw("Temp gauge gamma")]
-            public float temperatureGaugeGamma = 0.5f;
-
-            [Draw("Cutoff wheel gamma", Min = 0.1f)]
-            public float cutoffGamma = 1.9f;
-
             [Draw("Enable detailed low-speed simulation")]
             public bool enableLowSpeedSimulation = true;
             [Draw("Low-speed simulation transition start", VisibleOn = "enableLowSpeedSimulation|true")]

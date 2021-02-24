@@ -6,7 +6,7 @@ namespace DvMod.SteamCutoff
     {
         public const float CylinderVolume = 282f; // PRR L1s: 27x30"
         public static float SteamChestPressure(SteamLocoSimulation sim) => sim.boilerPressure.value * sim.regulator.value;
-        public static float Cutoff(SteamLocoSimulation sim) => Mathf.Pow(sim.cutoff.value, Main.settings.cutoffGamma) * 0.85f;
+        public static float Cutoff(SteamLocoSimulation sim) => Mathf.Pow(sim.cutoff.value, Constants.CutoffGamma) * 0.85f;
 
         // 4 strokes / revolution
         // 4.4m driver circumference (see ChuffController)
