@@ -16,10 +16,6 @@ namespace DvMod.SteamCutoff
                 {
                     leverSpec.invertDirection ^= true;
                 }
-                else if (spec.name == "C injector" && spec is Rotary rotarySpec)
-                {
-                    rotarySpec.scrollWheelHoverScroll *= 0.2f;
-                }
             }
         }
 
