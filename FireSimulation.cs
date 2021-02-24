@@ -44,6 +44,7 @@ namespace DvMod.SteamCutoff
 
         /// <summary>Coal consumption rate (kg/s) per unit surface area (m^2)</summary>
         private const float MaxConsumptionRate = 0.013f;
+        private float MaxConsumptionRatePerArea() => MaxConsumptionRate * Main.settings.combustionRate;
 
         public const float CoalChunkMass = 10f; // kg
         private const float PiecesPerChunk = CoalChunkMass / CoalPieceMass;
@@ -66,7 +67,7 @@ namespace DvMod.SteamCutoff
         /// <summary>Coal surface area in m^2.</summary>
         public float TotalSurfaceArea() => coalChunkMasses.Sum(ChunkTotalSurfaceArea);
         /// <summary>Coal consumption rate in kg/s with unlimited oxygen.</summary>
-        public float MaxCoalConsumptionRate() => MaxConsumptionRate * TotalSurfaceArea();
+        public float MaxCoalConsumptionRate() => MaxConsumptionRatePerArea() * TotalSurfaceArea();
         /// <summary>Maximum oxygen consumption in kg/s.</summary>
         public float MaxOxygenConsumptionRate() => MaxCoalConsumptionRate() * OxygenMassFactor * CoalCompositionCarbon;
 
@@ -112,7 +113,7 @@ namespace DvMod.SteamCutoff
 
         public void ConsumeCoal(float deltaTime)
         {
-            var combustionRatePerSurfaceArea = CombustionMultiplier() * MaxConsumptionRate * deltaTime;
+            var combustionRatePerSurfaceArea = CombustionMultiplier() * MaxConsumptionRatePerArea() * deltaTime;
             for (int i = coalChunkMasses.Count - 1; i >= 0; i--)
             {
                 var chunkMass = coalChunkMasses[i];

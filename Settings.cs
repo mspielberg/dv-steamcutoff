@@ -7,6 +7,8 @@ namespace DvMod.SteamCutoff
         {
             [Draw("Max boiler pressure", Min = 0f, Max = 20f)]
             public float safetyValveThreshold = 14f;
+            [Draw("Coal combustion rate")]
+            public float combustionRate = 1.5f;
             [Draw("Boiler thermal efficiency")]
             public float boilerThermalEfficiency = 0.8f;
 
