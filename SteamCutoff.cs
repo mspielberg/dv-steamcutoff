@@ -92,7 +92,8 @@ namespace DvMod.SteamCutoff
                 float blowerMassFlow = __instance.GetBlowerBonusNormalized() * BlowerMaxRate;
                 __instance.boilerPressure.AddNextValue(
                     -blowerMassFlow * (deltaTime / __instance.timeMult) /
-                    SteamTables.SteamDensity(__instance.boilerPressure.value) / BoilerSteamVolume(__instance.boilerWater.value));
+                    SteamTables.SteamDensity(__instance.boilerPressure.value) /
+                    BoilerSteamVolume(__instance.boilerWater.value));
 
                 var exhaustFlow = cylinderMassFlow + blowerMassFlow;
                 HeadsUpDisplayBridge.instance?.UpdateExhaustFlow(loco, exhaustFlow);
@@ -161,7 +162,7 @@ namespace DvMod.SteamCutoff
                 float heatEnergyFromCoal = heatPower * (deltaTime / __instance.timeMult); // in kJ
 
                 // evaporation
-                float evaporationMass = Mathf.Max(heatEnergyFromCoal - waterHeatingEnergy, 0f) / SteamTables.SpecificEnthalpyOfVaporization(__instance);
+                float evaporationMass = (heatEnergyFromCoal - waterHeatingEnergy) / SteamTables.SpecificEnthalpyOfVaporization(__instance);
                 HeadsUpDisplayBridge.instance?.UpdateWaterEvap(loco, evaporationMass / (deltaTime / __instance.timeMult));
                 float evaporationVolume = evaporationMass / SteamTables.WaterDensity(__instance);
 
