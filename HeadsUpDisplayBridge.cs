@@ -30,7 +30,6 @@ namespace DvMod.SteamCutoff
 
         // boiler
         private readonly Pusher? waterEvapPusher;
-        private readonly Pusher? boilerSteamVolumePusher;
         private readonly Pusher? boilerSteamMassPusher;
 
         // cylinder
@@ -87,18 +86,23 @@ namespace DvMod.SteamCutoff
                 },
                 v => $"{v:P0}");
 
+            RegisterPull(
+                "Boiler water level",
+                car => car.GetComponent<SteamLocoSimulation>()?.boilerWater?.value,
+                v => $"{v:F0} L");
+
             RegisterPush(
                 out exhaustFlowPusher,
                 "Exhaust flow",
-                v => $"{v * 3600:F1} kg/h");
+                v => $"{v * 3600:F0} kg/h");
 
             RegisterPush(
                 out oxygenSupplyPusher,
                 "Oxygen supply",
-                v => $"{v * 3600:F1} kg/h");
+                v => $"{v * 3600:F0} kg/h");
 
             RegisterPull(
-                "Oxygen Avail",
+                "Oxygen availability",
                 car => FireState.Instance(car)?.oxygenAvailability,
                 v => $"{v:P0}");
 
@@ -110,22 +114,12 @@ namespace DvMod.SteamCutoff
             RegisterPull(
                 "Coal use",
                 car => car.GetComponent<SteamLocoSimulation>()?.coalConsumptionRate,
-                v => $"{v * 3600:F1} kg/h");
+                v => $"{v * 3600:F0} kg/h");
 
             RegisterPull(
                 "Heat yield",
                 car => FireState.Instance(car)?.smoothedHeatYieldRate,
-                v => $"{v / 1000:F1} MW");
-
-            RegisterPush(
-                out waterEvapPusher,
-                "Evaporation",
-                v => $"{v * 3600:F1} kg/h");
-
-            RegisterPush(
-                out boilerSteamVolumePusher,
-                "Boiler steam volume",
-                v => $"{v:F0} L");
+                v => $"{v:F0} kW");
 
             RegisterPush(
                 out boilerSteamMassPusher,
@@ -133,16 +127,20 @@ namespace DvMod.SteamCutoff
                 v => $"{v:F1} kg");
 
             RegisterPush(
+                out waterEvapPusher,
+                "Evaporation",
+                v => $"{v * 3600:F0} kg/h");
+
+            RegisterPush(
                 out steamConsumptionPusher,
                 "Cylinder steam use",
-                 v => $"{v * 3600:F1} kg/h");
+                 v => $"{v * 3600:F0} kg/h");
         }
 
         public void UpdateExhaustFlow(TrainCar car, float exhaustFlow) => exhaustFlowPusher?.Invoke(car, exhaustFlow);
         public void UpdateOxygenSupply(TrainCar car, float oxygenSupply) => oxygenSupplyPusher?.Invoke(car, oxygenSupply);
 
         public void UpdateWaterEvap(TrainCar car, float evapKgPerS) => waterEvapPusher?.Invoke(car, evapKgPerS);
-        public void UpdateBoilerSteamVolume(TrainCar car, float steamVolume) => boilerSteamVolumePusher?.Invoke(car, steamVolume);
         public void UpdateBoilerSteamMass(TrainCar car, float steamMass) => boilerSteamMassPusher?.Invoke(car, steamMass);
 
         public void UpdateSteamUsage(TrainCar car, float steamKgPerS) => steamConsumptionPusher?.Invoke(car, steamKgPerS);
