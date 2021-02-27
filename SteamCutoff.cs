@@ -321,7 +321,7 @@ namespace DvMod.SteamCutoff
                     return false;
                 }
                 __instance.tenderCoal.PassValueTo(__instance.coalbox, FireState.CoalChunkMass);
-                if (__instance.fireOn.value == 0f && __instance.temperature.value > 80f)
+                if (__instance.fireOn.value == 0f && __instance.temperature.value > 400f)
                 {
                     __instance.fireOn.SetValue(1f);
                 }
