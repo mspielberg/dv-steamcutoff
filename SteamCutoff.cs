@@ -156,7 +156,7 @@ namespace DvMod.SteamCutoff
                 FireState state = FireState.Instance(__instance);
 
                 // water heating
-                float waterAdded = __instance.boilerWater.nextValue - __instance.boilerWater.value; // L
+                float waterAdded = Mathf.Max(0f, __instance.boilerWater.nextValue - __instance.boilerWater.value); // L
                 float waterHeatingEnergy = (SteamTables.BoilingPoint(__instance.boilerPressure.value) - 15f) * waterAdded; // kJ
 
                 // heat from boiler
