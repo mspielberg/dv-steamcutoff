@@ -191,12 +191,18 @@ namespace DvMod.SteamCutoff
 
                 // safety valve
                 const float SAFETY_VALVE_BLOWOFF = 0.2f; // 3 psi
+                var safetyValveCloseThreshold = settings.safetyValveThreshold - SAFETY_VALVE_BLOWOFF;
                 if (__instance.boilerPressure.value >= settings.safetyValveThreshold && __instance.safetyPressureValve.value == 0f)
                     __instance.safetyPressureValve.SetNextValue(1f);
-                else if (__instance.boilerPressure.value <= (settings.safetyValveThreshold - SAFETY_VALVE_BLOWOFF) && __instance.safetyPressureValve.value == 1f)
+                else if (__instance.boilerPressure.value <= safetyValveCloseThreshold && __instance.safetyPressureValve.value == 1f)
                     __instance.safetyPressureValve.SetNextValue(0f);
+
                 if ( __instance.safetyPressureValve.value == 1f)
-                    __instance.boilerPressure.AddNextValue(-10.0f * deltaTime);
+                {
+                    __instance.boilerPressure.AddNextValue(-50.0f * deltaTime);
+                    if (__instance.boilerPressure.nextValue < safetyValveCloseThreshold)
+                        __instance.boilerPressure.SetNextValue(safetyValveCloseThreshold);
+                }
 
                 // passive leakage
                 __instance.pressureLeakMultiplier = Mathf.Lerp(
