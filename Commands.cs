@@ -30,20 +30,20 @@ namespace DvMod.SteamCutoff
 
         public static void Register()
         {
-            Register("steamcutoff.dumpCoupler", _ =>
+            Register("steamcutoff.dumpChimney", _ =>
             {
-                if (PlayerManager.Car?.carType != TrainCarType.Tender)
+                if (PlayerManager.Car?.carType != TrainCarType.LocoSteamHeavy)
                     return;
-                var frontCoupler = PlayerManager.Car.frontCoupler;
-                Terminal.Log($"coupler = {frontCoupler}");
-                Terminal.Log($"coupledTo = {frontCoupler.coupledTo}");
-                Terminal.Log($"coupledTo.train = {frontCoupler.coupledTo.train}");
-                Terminal.Log($"coupledTo.rigid = {frontCoupler.coupledTo.rigidCJ}");
-                Terminal.Log($"coupledTo.springy = {frontCoupler.coupledTo.springyCJ}");
-                var joint = frontCoupler.coupledTo.springyCJ;
-                Terminal.Log(joint.breakForce.ToString());
-                Terminal.Log($"bounciness={joint.linearLimit.bounciness},distance={joint.linearLimit.contactDistance},limit={joint.linearLimit.limit}");
-                Terminal.Log($"spring={joint.linearLimitSpring.spring},damper={joint.linearLimitSpring.damper}");
+                var smoke = PlayerManager.Car.GetComponent<SteamLocoChuffSmokeParticles>();
+                var chimney = smoke.chimneyParticles;
+                Terminal.Log($"color={chimney.main.startColor.color}, rate={chimney.emission.rateOverTime.constant},lifetime={chimney.main.startLifetime.constant}");
+            });
+            Register("steamcutoff.dumpFireState", _ =>
+            {
+                if (PlayerManager.Car?.carType != TrainCarType.LocoSteamHeavy)
+                    return;
+                var sim = PlayerManager.Car.GetComponent<SteamLocoSimulation>();
+                Terminal.Log($"fireOn={sim.fireOn.value},temperature={sim.temperature.value}");
             });
         }
     }

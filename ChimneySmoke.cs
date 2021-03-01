@@ -26,7 +26,7 @@ namespace DvMod.SteamCutoff
                 {
                     yield return waitTimeout;
 
-                    float volume = state.oxygenSupply;
+                    float volume = sim.fireOn.value > 0 ? state.oxygenSupply : 0;
                     float color = Mathf.Clamp01(2 - (2 * state.oxygenAvailability));
 
                     if (volume == 0f)
@@ -43,7 +43,7 @@ namespace DvMod.SteamCutoff
                         main.startColor = Color.Lerp(__instance.startSmokeColorMin, __instance.startSmokeColorMax, color);
                         main.startLifetime = Mathf.Lerp(1f, 4f, volume);
                         var emission = __instance.chimneyParticles.emission;
-                        emission.rateOverTime = Mathf.Lerp(10f, 100f, volume);
+                        emission.rateOverTime = Mathf.Lerp(5f, 100f, volume);
                     }
                 }
             }
