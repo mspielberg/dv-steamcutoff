@@ -117,7 +117,11 @@ namespace DvMod.SteamCutoff
             for (int i = coalChunkMasses.Count - 1; i >= 0; i--)
             {
                 var chunkMass = coalChunkMasses[i];
-                coalChunkMasses[i] = chunkMass - (combustionRatePerSurfaceArea * ChunkTotalSurfaceArea(chunkMass));
+                var coalConsumed = combustionRatePerSurfaceArea * ChunkTotalSurfaceArea(chunkMass);
+                if (coalConsumed < chunkMass)
+                    coalChunkMasses[i] -= coalConsumed;
+                else
+                    coalChunkMasses.RemoveAt(i);
             }
         }
 
