@@ -43,7 +43,8 @@ namespace DvMod.SteamCutoff
                 if (PlayerManager.Car?.carType != TrainCarType.LocoSteamHeavy)
                     return;
                 var sim = PlayerManager.Car.GetComponent<SteamLocoSimulation>();
-                Terminal.Log($"fireOn={sim.fireOn.value},temperature={sim.temperature.value}");
+                var state = FireState.Instance(sim);
+                Terminal.Log($"fireOn={sim.fireOn.value},temperature={sim.temperature.value}, coalChunks={string.Join(",", state.coalChunkMasses)}");
             });
         }
     }
