@@ -198,7 +198,7 @@ namespace DvMod.SteamCutoff
 
                 if ( __instance.safetyPressureValve.value == 1f)
                 {
-                    __instance.boilerPressure.AddNextValue(-50.0f * deltaTime);
+                    __instance.boilerPressure.AddNextValue(-2f * __instance.boilerPressure.value * deltaTime);
                     if (__instance.boilerPressure.nextValue < safetyValveCloseThreshold)
                         __instance.boilerPressure.SetNextValue(safetyValveCloseThreshold);
                 }
