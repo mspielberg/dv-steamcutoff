@@ -27,7 +27,7 @@ namespace DvMod.SteamCutoff
                 {
                     yield return waitTimeout;
 
-                    float volume = sim.fireOn.value > 0 ? state.oxygenSupply : 0;
+                    float volume = sim.fireOn.value > 0 ? (state.oxygenSupply -500f) / 1000f : 0;
                     float color = Mathf.Clamp01(2 - (2 * state.oxygenAvailability));
 
                     if (volume == 0f)
