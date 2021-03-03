@@ -116,23 +116,12 @@ namespace DvMod.SteamCutoff
             var combustionRatePerSurfaceArea = CombustionMultiplier() * MaxConsumptionRatePerArea() * deltaTime;
             for (int i = coalChunkMasses.Count - 1; i >= 0; i--)
             {
-                var chunkMass = coalChunkMasses[i];
-                var coalConsumed = combustionRatePerSurfaceArea * ChunkTotalSurfaceArea(chunkMass);
-                if (coalConsumed < chunkMass)
-                    coalChunkMasses[i] -= coalConsumed;
+                var newChunkMass = coalChunkMasses[i] - (combustionRatePerSurfaceArea * ChunkTotalSurfaceArea(coalChunkMasses[i]));
+                if (newChunkMass > 0.01f)
+                    coalChunkMasses[i] = newChunkMass;
                 else
                     coalChunkMasses.RemoveAt(i);
             }
-        }
-
-        public void LogChunk()
-        {
-            var chunkMass = coalChunkMasses[0];
-            var pieceMass = chunkMass / PiecesPerChunk;
-            var pieceRadius = ChunkPieceRadius(chunkMass);
-            var pieceSurfaceArea = ChunkPieceSurfaceArea(chunkMass);
-            var maxCombustionRate = pieceSurfaceArea * MaxConsumptionRate;
-            // Debug.Log($"chunkMass={chunkMass},pieceMass={pieceMass},pieceRadius={pieceRadius},pieceSurfaceArea={pieceSurfaceArea},pieceCombustionRate={maxCombustionRate}");
         }
     }
 }
