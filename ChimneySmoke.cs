@@ -19,6 +19,7 @@ namespace DvMod.SteamCutoff
             public static IEnumerator UpdateSmokeParticles(SteamLocoChuffSmokeParticles __instance)
             {
                 WaitForSeconds waitTimeout = WaitFor.Seconds(0.2f);
+                yield return waitTimeout;
                 var loco = __instance.loco;
                 var sim = loco.sim;
                 var state = FireState.Instance(sim);
