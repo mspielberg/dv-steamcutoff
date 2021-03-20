@@ -15,6 +15,11 @@ namespace DvMod.SteamCutoff
                 if (spec.name == "C throttle regulator" && spec is Lever leverSpec)
                 {
                     leverSpec.invertDirection ^= true;
+                    leverSpec.scrollWheelHoverScroll *= -1;
+                }
+                else if (spec.name == "C draft" && spec is Puller pullerSpec)
+                {
+                    pullerSpec.invertDirection ^= true;
                 }
             }
         }
