@@ -15,6 +15,8 @@ namespace DvMod.SteamCutoff
 
         private static IEnumerator EnstrongJoints(TenderCouplerJointEnstronger __instance, Coupler coupler)
         {
+            var stress = __instance.GetComponent<TrainStress>();
+            stress.DisableStressCheckForTwoSeconds();
             coupler.DestroyRigidJoint();
             var cj = coupler.springyCJ;
             cj.breakForce = float.PositiveInfinity;
