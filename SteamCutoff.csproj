@@ -20,7 +20,9 @@
     <Reference Include="0Harmony"/>
     <Reference Include="Assembly-CSharp"/>
     <Reference Include="DV.Utils"/>
+    <Reference Include="NAudio"/>
     <Reference Include="UnityEngine.AnimationModule"/>
+    <Reference Include="UnityEngine.AudioModule"/>
     <Reference Include="UnityEngine.CoreModule"/>
     <Reference Include="UnityEngine.IMGUIModule"/>
     <Reference Include="UnityEngine.ParticleSystemModule"/>
