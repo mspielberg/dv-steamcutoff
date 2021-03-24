@@ -27,6 +27,7 @@ namespace DvMod.SteamCutoff
         // fire
         private readonly Pusher? exhaustFlowPusher;
         private readonly Pusher? oxygenSupplyPusher;
+        private readonly Pusher? stokerFeedRatePusher;
 
         // boiler
         private readonly Pusher? waterEvapPusher;
@@ -111,6 +112,11 @@ namespace DvMod.SteamCutoff
                 car => car.GetComponent<SteamLocoSimulation>()?.coalbox?.value,
                 v => $"{v:F1} kg");
 
+            RegisterPush(
+                out stokerFeedRatePusher,
+                "Stoker feed rate",
+                v => $"{v * 3600:F0} kg/h");
+
             RegisterPull(
                 "Coal use",
                 car => car.GetComponent<SteamLocoSimulation>()?.coalConsumptionRate,
@@ -139,6 +145,7 @@ namespace DvMod.SteamCutoff
 
         public void UpdateExhaustFlow(TrainCar car, float exhaustFlow) => exhaustFlowPusher?.Invoke(car, exhaustFlow);
         public void UpdateOxygenSupply(TrainCar car, float oxygenSupply) => oxygenSupplyPusher?.Invoke(car, oxygenSupply);
+        public void UpdateStokerFeedRate(TrainCar car, float stokerFeedRate) => stokerFeedRatePusher?.Invoke(car, stokerFeedRate);
 
         public void UpdateWaterEvap(TrainCar car, float evapKgPerS) => waterEvapPusher?.Invoke(car, evapKgPerS);
         public void UpdateBoilerSteamMass(TrainCar car, float steamMass) => boilerSteamMassPusher?.Invoke(car, steamMass);

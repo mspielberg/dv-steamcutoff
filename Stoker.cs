@@ -63,9 +63,11 @@ namespace DvMod.SteamCutoff
 
             public static void Postfix(SteamLocoSimulation __instance, float delta)
             {
+                var car = TrainCar.Resolve(__instance.gameObject);
                 var state = ExtraState.Instance(__instance);
                 var rate = __instance.boilerPressure.value / Main.settings.safetyValveThreshold * state.valveOpening; // ratio 0-1
                 var firingRate = MaxFiringRate * rate; // in kg/s
+                HeadsUpDisplayBridge.instance?.UpdateStokerFeedRate(car, firingRate);
                 state.strokeProgress += firingRate * delta / __instance.timeMult / FireState.CoalChunkMass;
                 while (state.strokeProgress >= 1.0f)
                 {
