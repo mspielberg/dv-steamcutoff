@@ -29,6 +29,13 @@ namespace DvMod.SteamCutoff
             var waterLevel = __instance.boilerWater;
             var ballTransform = waterLevel.transform.parent.Find($"{OriginName}/{BallFloatName}");
 
+            if (!Main.settings.enableBallFloat)
+            {
+                if (ballTransform != null)
+                    GameObject.Destroy(ballTransform.gameObject);
+                return;
+            }
+
             if (ballTransform == null)
             {
                 var origin = new GameObject(OriginName);

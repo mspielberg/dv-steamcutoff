@@ -19,6 +19,8 @@ namespace DvMod.SteamCutoff
             [Draw("Low-speed simulation transition width", VisibleOn = "enableLowSpeedSimulation|true")]
             public float lowSpeedTransitionWidth = 5f;
 
+            [Draw("Enable sight glass float")] public bool enableBallFloat = true;
+
             [Draw("Enable logging")] public bool enableLogging = false;
 
             override public void Save(UnityModManager.ModEntry entry) {
