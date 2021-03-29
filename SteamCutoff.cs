@@ -255,6 +255,9 @@ namespace DvMod.SteamCutoff
                 return totalPower * (1f - (0.7f * Mathf.Exp(-15f * cutoff)));
             }
 
+            private const float LowSpeedTransitionStart = 10f;
+            private const float LowSpeedTransitionWidth = 5;
+
             private static float PowerRatio(float cutoff, float speed, float revolution)
             {
                 if (!settings.enableLowSpeedSimulation)
@@ -263,8 +266,7 @@ namespace DvMod.SteamCutoff
                 return Mathf.Lerp(
                     InstantaneousPowerRatio(cutoff, revolution),
                     AveragePowerRatio(cutoff),
-                    (speed - settings.lowSpeedTransitionStart) /
-                    settings.lowSpeedTransitionWidth);
+                    (speed - LowSpeedTransitionStart) / LowSpeedTransitionWidth);
             }
 
             public static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
