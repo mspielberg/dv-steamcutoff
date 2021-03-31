@@ -15,38 +15,37 @@ namespace DvMod.SteamCutoff
                 __instance.updateCoroutine = __instance.StartCoroutine(UpdateSmokeParticles(__instance));
                 return false;
             }
+        }
 
-            public static IEnumerator UpdateSmokeParticles(SteamLocoChuffSmokeParticles __instance)
+        private static readonly Color clearSmoke = new Color(1f, 1f, 1f, 0.1f);
+
+        public static IEnumerator UpdateSmokeParticles(SteamLocoChuffSmokeParticles __instance)
+        {
+            WaitForSeconds waitTimeout = WaitFor.Seconds(0.2f);
+            yield return waitTimeout;
+            var sim = __instance.loco.sim;
+            var state = FireState.Instance(sim);
+            while (true)
             {
-                WaitForSeconds waitTimeout = WaitFor.Seconds(0.2f);
                 yield return waitTimeout;
-                var loco = __instance.loco;
-                var sim = loco.sim;
-                var state = FireState.Instance(sim);
-                while (true)
+
+                if (sim.fireOn.value == 0f)
                 {
-                    yield return waitTimeout;
-
-                    float volume = sim.fireOn.value > 0 ? (state.oxygenSupply -500f) / 1000f : 0;
-                    float color = Mathf.Clamp01(2 - (2 * state.oxygenAvailability));
-
-                    if (volume == 0f)
-                    {
-                        __instance.chimneyParticles.Stop();
-                    }
-                    else if (!__instance.chimneyParticles.isPlaying)
-                    {
-                        __instance.chimneyParticles.Play();
-                    }
-                    if (__instance.chimneyParticles.isPlaying)
-                    {
-                        var main = __instance.chimneyParticles.main;
-                        main.startColor = Color.Lerp(__instance.startSmokeColorMin, __instance.startSmokeColorMax, color);
-                        main.startLifetime = Mathf.Lerp(1f, 4f, volume);
-                        var emission = __instance.chimneyParticles.emission;
-                        emission.rateOverTime = Mathf.Lerp(5f, 100f, volume);
-                    }
+                    __instance.chimneyParticles.Stop();
+                    continue;
                 }
+
+                if (!__instance.chimneyParticles.isPlaying)
+                    __instance.chimneyParticles.Play();
+
+                float volume = Mathf.InverseLerp(Main.settings.minSmokeOxygenSupply, Main.settings.maxSmokeOxygenSupply, state.oxygenSupply);
+                var color = Color.Lerp(Color.black, clearSmoke, state.oxygenAvailability);
+
+                var main = __instance.chimneyParticles.main;
+                main.startColor = color;
+                main.startLifetime = Mathf.Lerp(Main.settings.minSmokeLifetime, Main.settings.maxSmokeLifetime, volume);
+                var emission = __instance.chimneyParticles.emission;
+                emission.rateOverTime = Mathf.Lerp(Main.settings.minSmokeRate, Main.settings.maxSmokeRate, volume);
             }
         }
     }
