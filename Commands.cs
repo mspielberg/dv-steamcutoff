@@ -30,22 +30,6 @@ namespace DvMod.SteamCutoff
 
         public static void Register()
         {
-            Register("steamcutoff.dumpChimney", _ =>
-            {
-                if (PlayerManager.Car?.carType != TrainCarType.LocoSteamHeavy)
-                    return;
-                var smoke = PlayerManager.Car.GetComponent<SteamLocoChuffSmokeParticles>();
-                var chimney = smoke.chimneyParticles;
-                Terminal.Log($"color={chimney.main.startColor.color}, rate={chimney.emission.rateOverTime.constant},lifetime={chimney.main.startLifetime.constant}");
-            });
-            Register("steamcutoff.dumpFireState", _ =>
-            {
-                if (PlayerManager.Car?.carType != TrainCarType.LocoSteamHeavy)
-                    return;
-                var sim = PlayerManager.Car.GetComponent<SteamLocoSimulation>();
-                var state = FireState.Instance(sim);
-                Terminal.Log($"fireOn={sim.fireOn.value},temperature={sim.temperature.value}, coalChunks={string.Join(",", state.coalChunkMasses)}");
-            });
         }
     }
 }
