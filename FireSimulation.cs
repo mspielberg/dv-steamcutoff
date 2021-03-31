@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 namespace DvMod.SteamCutoff
@@ -11,7 +10,7 @@ namespace DvMod.SteamCutoff
         {
             if (states.TryGetValue(sim, out var state))
                 return state;
-            return states[sim] = new FireState(sim.coalbox.value);
+            return states[sim] = new FireState(sim);
         }
 
         public static FireState? Instance(TrainCar car)
@@ -22,14 +21,12 @@ namespace DvMod.SteamCutoff
             return null;
         }
 
-        public FireState(float coalMass)
+        public FireState(SteamLocoSimulation sim)
         {
-            var wholeChunks = Mathf.Floor(coalMass / CoalChunkMass);
-            for (int i = 0; i < wholeChunks; i ++)
-                coalChunkMasses.Add(CoalChunkMass);
-            if (coalMass % CoalChunkMass > 0f)
-                coalChunkMasses.Add(coalMass % CoalChunkMass);
+            this.sim = sim;
         }
+
+        private readonly SteamLocoSimulation sim;
 
         private const float CarbonAtomicWeight = 12.011f;
         private const float OxygenAtomicWeight = 15.999f;
@@ -53,19 +50,14 @@ namespace DvMod.SteamCutoff
         public float oxygenSupply;
         /// <summary>Current oxygen supply as a fraction of oxygen demand.</summary>
         public float oxygenAvailability;
-        /// <summary>Average radius of pieces in each chunk.</summary>
-        public readonly List<float> coalChunkMasses = new List<float>();
         public float smoothedHeatYieldRate;
         private float smoothedHeatYieldRateVel;
 
-        public void AddCoalChunk() => coalChunkMasses.Insert(0, CoalChunkMass);
-
-        private float ChunkPieceRadius(float chunkMass) => Mathf.Pow(chunkMass / PiecesPerChunk / CoalDensity / (4f/3f) / Mathf.PI, 1f/3f);
-        private float ChunkPieceSurfaceArea(float chunkMass) => Mathf.Pow(ChunkPieceRadius(chunkMass), 2) * 4 * Mathf.PI;
-        private float ChunkTotalSurfaceArea(float chunkMass) => PiecesPerChunk * ChunkPieceSurfaceArea(chunkMass);
+        private static readonly float ChunkRadius = Mathf.Pow(CoalChunkMass / PiecesPerChunk / CoalDensity / (4f/3f) / Mathf.PI, 1f/3f);
+        private static readonly float ChunkTotalSurfaceArea = PiecesPerChunk * Mathf.Pow(ChunkRadius, 2) * 4 * Mathf.PI;
 
         /// <summary>Coal surface area in m^2.</summary>
-        public float TotalSurfaceArea() => coalChunkMasses.Sum(ChunkTotalSurfaceArea);
+        public float TotalSurfaceArea() => sim.coalbox.value / CoalChunkMass * ChunkTotalSurfaceArea;
         /// <summary>Coal consumption rate in kg/s with unlimited oxygen.</summary>
         public float MaxCoalConsumptionRate() => MaxConsumptionRatePerArea() * TotalSurfaceArea();
         /// <summary>Maximum oxygen consumption in kg/s.</summary>
@@ -101,7 +93,11 @@ namespace DvMod.SteamCutoff
         /// <summary>Energy yield from coal combustion in kW.</summary>
         public float SmoothedHeatYieldRate(bool fireOn)
         {
-            return smoothedHeatYieldRate = Mathf.SmoothDamp(smoothedHeatYieldRate, fireOn ? InstantaneousHeatYieldRate() : 0f, ref smoothedHeatYieldRateVel, 2f);
+            return smoothedHeatYieldRate = Mathf.SmoothDamp(
+                smoothedHeatYieldRate,
+                fireOn ? InstantaneousHeatYieldRate() : 0f,
+                ref smoothedHeatYieldRateVel,
+                smoothTime: 1f);
         }
 
         private float InstantaneousHeatYieldRate()
@@ -109,19 +105,6 @@ namespace DvMod.SteamCutoff
             float co = oxygenAvailability >= 0.5f ? 0.25f : oxygenAvailability / 2f;
             float co2 = oxygenAvailability >= 0.5f ? (1.5f * oxygenAvailability) - 0.75f : 0f;
             return CoalConsumptionRate() * (co + co2) * SpecificEnthalpy * CoalCompositionCarbon * Main.settings.boilerThermalEfficiency;
-        }
-
-        public void ConsumeCoal(float deltaTime)
-        {
-            var combustionRatePerSurfaceArea = CombustionMultiplier() * MaxConsumptionRatePerArea() * deltaTime;
-            for (int i = coalChunkMasses.Count - 1; i >= 0; i--)
-            {
-                var newChunkMass = coalChunkMasses[i] - (combustionRatePerSurfaceArea * ChunkTotalSurfaceArea(coalChunkMasses[i]));
-                if (newChunkMass > 0.01f)
-                    coalChunkMasses[i] = newChunkMass;
-                else
-                    coalChunkMasses.RemoveAt(i);
-            }
         }
     }
 }

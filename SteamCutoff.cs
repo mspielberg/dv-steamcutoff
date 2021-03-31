@@ -1,4 +1,5 @@
 using HarmonyLib;
+using System;
 using UnityEngine;
 using UnityModManagerNet;
 
@@ -66,6 +67,12 @@ namespace DvMod.SteamCutoff
                 mod?.Logger.Log(message);
         }
 
+        public static void DebugLog(TrainCar car, Func<string> message)
+        {
+            if (settings.enableLogging && PlayerManager.Car == car)
+                mod?.Logger.Log(message());
+        }
+
         [HarmonyPatch(typeof(SteamLocoSimulation), nameof(SteamLocoSimulation.Awake))]
         public static class AwakePatch
         {
@@ -106,7 +113,6 @@ namespace DvMod.SteamCutoff
                     float num = __instance.coalConsumptionRate * (deltaTime / __instance.timeMult);
                     __instance.TotalCoalConsumed += num;
                     __instance.coalbox.AddNextValue(-num);
-                    state.ConsumeCoal(deltaTime / __instance.timeMult);
                 }
                 else
                 {
@@ -326,7 +332,6 @@ namespace DvMod.SteamCutoff
                 {
                     __instance.fireOn.SetValue(1f);
                 }
-                FireState.Instance(__instance).AddCoalChunk();
                 return false;
             }
         }
