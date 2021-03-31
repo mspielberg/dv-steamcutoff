@@ -13,7 +13,6 @@ namespace DvMod.SteamCutoff
         private class ExtraState
         {
             public float valveOpening;
-            public float strokeProgress;
 
             private static readonly Dictionary<SteamLocoSimulation, ExtraState> states = new Dictionary<SteamLocoSimulation, ExtraState>();
             public static ExtraState Instance(SteamLocoSimulation sim)
@@ -21,11 +20,6 @@ namespace DvMod.SteamCutoff
                 if (!states.TryGetValue(sim, out var state))
                     states[sim] = state = new ExtraState();
                 return state;
-            }
-
-            public override string ToString()
-            {
-                return $"valve={valveOpening},progress={strokeProgress}";
             }
         }
 
@@ -66,14 +60,12 @@ namespace DvMod.SteamCutoff
                 var car = TrainCar.Resolve(__instance.gameObject);
                 var state = ExtraState.Instance(__instance);
                 var rate = __instance.boilerPressure.value / Main.settings.safetyValveThreshold * state.valveOpening; // ratio 0-1
-                var firingRate = MaxFiringRate * rate; // in kg/s
+                var firingRate = MaxFiringRate * Mathf.Pow(rate, 2); // in kg/s
                 HeadsUpDisplayBridge.instance?.UpdateStokerFeedRate(car, firingRate);
-                state.strokeProgress += firingRate * delta / __instance.timeMult / FireState.CoalChunkMass;
-                while (state.strokeProgress >= 1.0f)
+                __instance.tenderCoal.PassValueTo(__instance.coalbox, firingRate * delta / __instance.timeMult);
+                if (__instance.fireOn.value == 0f && __instance.temperature.value > 400f)
                 {
-                    state.strokeProgress--;
-                    __instance.AddCoalChunk();
-                    PlayStokerChuff(__instance.transform, rate);
+                    __instance.fireOn.SetValue(1f);
                 }
             }
         }
