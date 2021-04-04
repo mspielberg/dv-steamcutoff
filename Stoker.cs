@@ -23,8 +23,8 @@ namespace DvMod.SteamCutoff
             }
         }
 
-        [HarmonyPatch(typeof(CabInputSteamExtra), nameof(CabInputSteamExtra.Init))]
-        public static class CabInputSteamExtraInitPatch
+        [HarmonyPatch(typeof(CabInputSteamExtra), nameof(CabInputSteamExtra.OnEnable))]
+        public static class CabInputSteamExtraOnEnablePatch
         {
             private static IEnumerator AddCallbackCoro(CabInputSteamExtra __instance)
             {
