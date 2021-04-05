@@ -22,18 +22,18 @@ namespace DvMod.SteamCutoff
             cj.breakForce = float.PositiveInfinity;
             cj.linearLimit = new SoftJointLimit
             {
-                limit = 0.8f
+                limit = 2.0f
             };
-            while (coupler.IsJointAdaptationActive)
-            {
-                yield return WaitFor.Seconds(0.5f);
-            }
-            cj.anchor += Vector3.forward * -0.8f;
-            cj.linearLimit = new SoftJointLimit { limit = 0f };
             cj.linearLimitSpring = new SoftJointLimitSpring {
                 spring = 0f,
                 damper = 0f,
             };
+            cj.anchor += Vector3.forward * -0.8f;
+            while (cj.linearLimit.limit > 0f)
+            {
+                yield return WaitFor.FixedUpdate;
+                cj.linearLimit = new SoftJointLimit { limit = Mathf.Max(0f, cj.linearLimit.limit - 0.001f) };
+            }
             __instance.enstrongCoro = null;
         }
     }
