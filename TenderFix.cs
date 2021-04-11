@@ -15,6 +15,7 @@ namespace DvMod.SteamCutoff
 
         private static IEnumerator EnstrongJoints(TenderCouplerJointEnstronger __instance, Coupler coupler)
         {
+            yield return null;
             var stress = __instance.GetComponent<TrainStress>();
             stress.DisableStressCheckForTwoSeconds();
             coupler.DestroyRigidJoint();
@@ -35,6 +36,12 @@ namespace DvMod.SteamCutoff
                 cj.linearLimit = new SoftJointLimit { limit = Mathf.Max(0f, cj.linearLimit.limit - 0.001f) };
             }
             __instance.enstrongCoro = null;
+        }
+
+        private static Vector3 JointDelta(Joint joint)
+        {
+            var delta = joint.transform.InverseTransformPoint(joint.connectedBody.transform.TransformPoint(joint.connectedAnchor)) - joint.anchor;
+            return delta;
         }
     }
 }

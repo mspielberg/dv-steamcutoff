@@ -1,25 +1,37 @@
+using UnitsNet;
+using UnitsNet.CustomCode.Units;
+using UnitsNet.CustomCode.Wrappers;
 using UnityEngine;
 
 namespace DvMod.SteamCutoff
 {
     public static class SteamTables
     {
-        private const float MaxPressure = 20f;
+        public static readonly Pressure Atmospheric = Pressure.FromBars(0);
+        public static readonly Pressure MaxPressure = Pressure.FromBars(20f);
 
-        /// <summary>Boiling point in degrees centigrade.</summary>
-        public static float BoilingPoint(float gaugePressure) => Mathf.Lerp(100f, 212f, gaugePressure / MaxPressure);
-        public static float BoilingPoint(SteamLocoSimulation sim) => BoilingPoint(sim.boilerPressure.value);
+        private static float PressureRatio(Pressure p) => (float)(p / MaxPressure);
 
-        /// <summary>Density of water in kg/L.</summary>
-        public static float WaterDensity(float gaugePressure) => Mathf.Lerp(0.95866f, 0.84985f, gaugePressure / MaxPressure);
-        public static float WaterDensity(SteamLocoSimulation sim) => WaterDensity(sim.boilerPressure.value);
+        public static Temperature BoilingPoint(Pressure p) =>
+            Temperature.FromDegreesCelsius(Mathf.Lerp(99.632f, 212.417f, PressureRatio(p)));
+        public static float BoilingPoint(float p) => (float)BoilingPoint(Pressure.FromBars(p)).DegreesCelsius;
 
-        /// <summary>Density of saturated steam in kg/L.</summary>
-        public static float SteamDensity(float gaugePressure) => Mathf.Lerp(0.0005902f, 0.010041f, gaugePressure / MaxPressure);
-        public static float SteamDensity(SteamLocoSimulation sim) => SteamDensity(sim.boilerPressure.value);
+        public static Density WaterDensity(Pressure p) =>
+            Density.FromKilogramsPerCubicMeter(Mathf.Lerp(958.64f, 849.80f, PressureRatio(p)));
+        public static float WaterDensity(float p) => (float)WaterDensity(Pressure.FromBars(p)).KilogramsPerLiter;
+            
+        public static Density WaterDensity(Temperature t) =>
+            Density.FromKilogramsPerCubicMeter(Mathf.Lerp(958.64f, 849.80f, Mathf.InverseLerp(99.632f, 212.417f, (float)t.DegreesCelsius)));
 
-        /// <summary>Energy to boil water in kJ/kg.</summary>
-        public static float SpecificEnthalpyOfVaporization(float gaugePressure) => Mathf.Lerp(2257.6f, 1890.0f, gaugePressure / MaxPressure);
-        public static float SpecificEnthalpyOfVaporization(SteamLocoSimulation sim) => SpecificEnthalpyOfVaporization(sim.boilerPressure.value);
+        public static Density SteamDensity(Pressure p) =>
+            Density.FromKilogramsPerCubicMeter(Mathf.Lerp(0.5903f, 10.042f, PressureRatio(p)));
+        public static float SteamDensity(float p) => (float)SteamDensity(Pressure.FromBars(p)).KilogramsPerLiter;
+
+        public static SpecificEnergy SpecificEnthalpyOfVaporization(Pressure p) =>
+            SpecificEnergy.FromKilojoulesPerKilogram(Mathf.Lerp(2257.6f, 1890.0f, PressureRatio(p)));
+        public static SpecificEntropy WaterSpecificHeat(Pressure p) =>
+            SpecificEntropy.FromKilojoulesPerKilogramDegreeCelsius(Mathf.Lerp(3.7697f, 3.2713f, PressureRatio(p)));
+        public static SpecificEntropy SteamSpecificHeat(Pressure p) =>
+            SpecificEntropy.FromKilojoulesPerKilogramDegreeCelsius(Mathf.Lerp(1.5527f, 2.1586f, PressureRatio(p)));
     }
 }

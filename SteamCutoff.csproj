@@ -9,7 +9,9 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.0" PrivateAssets="all" />
+    <PackageReference Include="SharpFluids" Version="2.0.89" />
   </ItemGroup>
+  
 
   <ItemGroup>
     <PackageReference Include="RedworkDE.Publicizer" Version="0.2.2" />
@@ -17,16 +19,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="0Harmony"/>
-    <Reference Include="Assembly-CSharp"/>
-    <Reference Include="DV.Utils"/>
-    <Reference Include="NAudio"/>
-    <Reference Include="UnityEngine.AnimationModule"/>
-    <Reference Include="UnityEngine.AudioModule"/>
-    <Reference Include="UnityEngine.CoreModule"/>
-    <Reference Include="UnityEngine.IMGUIModule"/>
-    <Reference Include="UnityEngine.ParticleSystemModule"/>
-    <Reference Include="UnityEngine.PhysicsModule"/>
-    <Reference Include="UnityModManager"/>
+    <Reference Include="0Harmony" />
+    <Reference Include="Assembly-CSharp" />
+    <Reference Include="DV.Utils" />
+    <Reference Include="NAudio" />
+    <Reference Include="UnityEngine.AnimationModule" />
+    <Reference Include="UnityEngine.AudioModule" />
+    <Reference Include="UnityEngine.CoreModule" />
+    <Reference Include="UnityEngine.IMGUIModule" />
+    <Reference Include="UnityEngine.ParticleSystemModule" />
+    <Reference Include="UnityEngine.PhysicsModule" />
+    <Reference Include="UnityModManager" />
   </ItemGroup>
 </Project>
