@@ -2,7 +2,7 @@
   "Id": "SteamCutoff",
   "DisplayName": "Steam Cutoff",
   "Author": "Zeibach",
-  "Version": "0.8.2",
+  "Version": "0.8.3",
   "LoadAfter": ["HeadsUpDisplay"],
   "AssemblyName": "SteamCutoff.dll",
   "EntryMethod": "DvMod.SteamCutoff.Main.Load",
