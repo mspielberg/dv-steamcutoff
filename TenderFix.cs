@@ -18,23 +18,32 @@ namespace DvMod.SteamCutoff
             var stress = __instance.GetComponent<TrainStress>();
             stress.DisableStressCheckForTwoSeconds();
             coupler.DestroyRigidJoint();
+            coupler.KillJointCoroutines();
             var cj = coupler.springyCJ;
             cj.breakForce = float.PositiveInfinity;
-            cj.linearLimit = new SoftJointLimit
-            {
-                limit = 2.0f
-            };
             cj.linearLimitSpring = new SoftJointLimitSpring {
-                spring = 0f,
+                spring = 2e7f,
                 damper = 0f,
             };
-            cj.anchor += Vector3.forward * -0.8f;
+            if (CarTypes.IsSteamLocomotive(coupler.train.carType))
+                cj.anchor += Vector3.back * 0.8f;
+            else
+                cj.connectedAnchor += Vector3.back * 0.8f;
+            cj.linearLimit = new SoftJointLimit
+            {
+                limit = cj.CurrentDisplacement().magnitude,
+            };
             while (cj.linearLimit.limit > 0f)
             {
                 yield return WaitFor.FixedUpdate;
                 cj.linearLimit = new SoftJointLimit { limit = Mathf.Max(0f, cj.linearLimit.limit - 0.001f) };
             }
             __instance.enstrongCoro = null;
+        }
+
+        private static void DebugLog(ConfigurableJoint cj)
+        {
+            Main.DebugLog($"anchor={cj.anchor},connectedAnchor={cj.connectedAnchor},limit={cj.linearLimit.limit},spring={cj.linearLimitSpring.spring},damper={cj.linearLimitSpring.damper},displacement={cj.CurrentDisplacement().z}");
         }
     }
 }

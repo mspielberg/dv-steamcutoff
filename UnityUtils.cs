@@ -9,5 +9,10 @@ namespace DvMod.SteamCutoff
         {
             return string.Join("/", c.GetComponentsInParent<Transform>(true).Reverse().Select(c => c.name));
         }
+
+        public static Vector3 CurrentDisplacement(this Joint j)
+        {
+            return j.transform.InverseTransformPoint(j.connectedBody.transform.TransformPoint(j.connectedAnchor)) - j.anchor;
+        }
     }
 }
