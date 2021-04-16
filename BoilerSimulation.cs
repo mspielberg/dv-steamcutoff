@@ -37,7 +37,8 @@ namespace DvMod.SteamCutoff
             bool waterTempStored = waterTemp.TryGetValue(__instance, out float currentWaterTemp);
             if (!waterTempStored)
                 currentWaterTemp = boilingTemp;
-            float currentWaterMass = boilerWaterLevel * SteamTables.WaterDensityByTemp(currentWaterTemp);
+            float waterDensity = SteamTables.WaterDensityByTemp(currentWaterTemp);
+            float currentWaterMass = boilerWaterLevel * waterDensity;
             steamMass = ((boilerPressure + 1.01325f) * BoilerSteamVolume(boilerWaterLevel)) / (0.01f * SteamGasConstant * (currentWaterTemp + 273.15f));
 
             float newWaterMass = currentWaterMass + waterAdded;
@@ -49,13 +50,15 @@ namespace DvMod.SteamCutoff
             float excessEnergy = (currentWaterTemp - boilingTemp) * currentWaterMass * waterHeatCapacity + heatEnergyFromCoal;
             float evaporatedMassLimit = excessEnergy / boilOffEnergy;
             float newWaterLevel, smoothEvaporation;
+
             if (boilerPressure < 0.05f)
             {
-                currentWaterMass -= evaporatedMassLimit;
-                evaporationRate = evaporatedMassLimit / deltaTime;
+                float evaporatedMass = heatEnergyFromCoal / boilOffEnergy;
+                currentWaterMass -= evaporatedMass;
+                evaporationRate = evaporatedMass / deltaTime;
                 newWaterLevel = currentWaterMass / SteamTables.WaterDensityByTemp(currentWaterTemp);
 
-                steamMass += evaporatedMassLimit;
+                steamMass += evaporatedMass;
                 boilerPressure = 0.01f * SteamGasConstant * ((steamMass * (currentWaterTemp + 273.15f)) / BoilerSteamVolume(newWaterLevel)) - 1.01325f;
 
                 if (waterTempStored)
@@ -84,7 +87,7 @@ namespace DvMod.SteamCutoff
                 {
                     float testWaterMass = currentWaterMass - testEvaporatedMass;
                     float testWaterTemp = currentWaterTemp + (heatEnergyFromCoal - testEvaporatedMass * boilOffEnergy) / (currentWaterMass * waterHeatCapacity);
-                    float testWaterLevel = testWaterMass / waterHeatCapacity;
+                    float testWaterLevel = testWaterMass / waterDensity;
 
                     float testSteamMass = steamMass + testEvaporatedMass;
                     float testSteamPressure = 0.01f * SteamGasConstant * ((testSteamMass * (testWaterTemp + 273.15f)) / BoilerSteamVolume(testWaterLevel)) - 1.01325f;
