@@ -56,11 +56,6 @@ namespace DvMod.SteamCutoff
             return true;
         }
 
-        private static float BoilerSteamVolume(float boilerWater)
-        {
-            return (SteamLocoSimulation.BOILER_WATER_CAPACITY_L * 1.05f) - boilerWater;
-        }
-
         public static void DebugLog(string message)
         {
             if (settings.enableLogging)
@@ -100,7 +95,7 @@ namespace DvMod.SteamCutoff
                 __instance.boilerPressure.AddNextValue(
                     -blowerMassFlow * (deltaTime / __instance.timeMult) /
                     SteamTables.SteamDensity(__instance.boilerPressure.value) /
-                    BoilerSteamVolume(__instance.boilerWater.value));
+                    BoilerSimulation.BoilerSteamVolume(__instance.boilerWater.value));
 
                 var exhaustFlow = cylinderMassFlow + blowerMassFlow;
                 HeadsUpDisplayBridge.instance?.UpdateExhaustFlow(loco, exhaustFlow);
@@ -137,8 +132,8 @@ namespace DvMod.SteamCutoff
                 __instance.tenderWater.PassValueToNext(__instance.boilerWater, waterVolumeToInject);
                 __instance.boilerWater.AddNextValue(-4000f * __instance.waterDump.value * deltaTime);
 
-                float steamVolumeBefore = BoilerSteamVolume(__instance.boilerWater.value);
-                float steamVolumeAfter = BoilerSteamVolume(__instance.boilerWater.nextValue);
+                float steamVolumeBefore = BoilerSimulation.BoilerSteamVolume(__instance.boilerWater.value);
+                float steamVolumeAfter = BoilerSimulation.BoilerSteamVolume(__instance.boilerWater.nextValue);
                 float pressureAfter = __instance.boilerPressure.value * steamVolumeBefore / steamVolumeAfter;
                 __instance.boilerPressure.SetNextValue(pressureAfter);
 
@@ -160,35 +155,31 @@ namespace DvMod.SteamCutoff
 
                 TrainCar loco = __instance.GetComponent<TrainCar>();
                 FireState state = FireState.Instance(__instance);
+                float boilerPressure = __instance.boilerPressure.value;
+                float boilerWaterLevel = __instance.boilerWater.value;
 
-                // water heating
-                float waterAdded = Mathf.Max(0f, __instance.boilerWater.nextValue - __instance.boilerWater.value); // L
-                float waterHeatingEnergy = (SteamTables.BoilingPoint(__instance.boilerPressure.value) - 15f) * waterAdded; // kJ
-
-                // heat from boiler
+                // heat from firebox
                 var heatPower = state.SmoothedHeatYieldRate(__instance.fireOn.value > 0f); // in kW
                 __instance.temperature.SetNextValue(Mathf.Lerp(
-                    SteamTables.BoilingPoint(__instance.boilerPressure.value),
+                    SteamTables.BoilingPoint(boilerPressure),
                     1200f,
                     Mathf.Pow(
                         Mathf.InverseLerp(0, Constants.TemperatureGaugeMaxPower, heatPower),
                         Constants.TemperatureGaugeGamma)));
                 float heatEnergyFromCoal = heatPower * (deltaTime / __instance.timeMult); // in kJ
 
-                // evaporation
-                float evaporationMass = (heatEnergyFromCoal - waterHeatingEnergy) / SteamTables.SpecificEnthalpyOfVaporization(__instance);
-                HeadsUpDisplayBridge.instance?.UpdateWaterEvap(loco, evaporationMass / (deltaTime / __instance.timeMult));
-                float evaporationVolume = evaporationMass / SteamTables.WaterDensity(__instance);
+                // water and steam
+                float waterAdded = Mathf.Max(0f, __instance.boilerWater.nextValue - boilerWaterLevel); // L
+                float oldWaterLevel = boilerWaterLevel;
+                float oldSteamPressure = boilerPressure;
+                BoilerSimulation.Run(__instance, deltaTime / __instance.timeMult, heatEnergyFromCoal, waterAdded, 
+                    ref boilerPressure, ref boilerWaterLevel, 
+                    out float currentSteamMass, out float smoothEvaporation);
+                __instance.boilerWater.AddNextValue(boilerWaterLevel - oldWaterLevel);
+                __instance.boilerPressure.AddNextValue(boilerPressure - oldSteamPressure);
 
-                __instance.boilerWater.AddNextValue(-evaporationVolume);
-
-                float boilerSteamVolume = BoilerSteamVolume(__instance.boilerWater.value);
-                float boilerSteamMass = boilerSteamVolume * SteamTables.SteamDensity(__instance);
-                float newPressure = ((__instance.boilerPressure.value + 1f) * (boilerSteamMass + evaporationMass) / boilerSteamMass) - 1f;
-                __instance.boilerPressure.AddNextValue(newPressure - __instance.boilerPressure.value);
-                // Main.DebugLog($"oldPressure={__instance.boilerPressure.value}, oldMass={boilerSteamMass}, newMass={boilerSteamMass + evaporationMass}, newPressure={newPressure}");
-
-                HeadsUpDisplayBridge.instance?.UpdateBoilerSteamMass(loco, boilerSteamVolume * SteamTables.SteamDensity(__instance));
+                HeadsUpDisplayBridge.instance?.UpdateWaterEvap(loco, smoothEvaporation);
+                HeadsUpDisplayBridge.instance?.UpdateBoilerSteamMass(loco, currentSteamMass);
 
                 // steam release
                 if (__instance.steamReleaser.value > 0.0f && __instance.boilerPressure.value > 0.0f)
@@ -294,7 +285,7 @@ namespace DvMod.SteamCutoff
                     float powerRatio = PowerRatio(cutoff, __instance.speed.value, chuff.dbgCurrentRevolution);
                     __instance.power.SetNextValue(steamChestPressureRatio * powerRatio * SteamLocoSimulation.POWER_CONST_HP);
 
-                    float boilerSteamVolume = BoilerSteamVolume(__instance.boilerWater.value);
+                    float boilerSteamVolume = BoilerSimulation.BoilerSteamVolume(__instance.boilerWater.value);
                     float boilerSteamMass = boilerSteamVolume * SteamTables.SteamDensity(__instance);
                     float steamMassConsumed = CylinderSimulation.CylinderSteamMassFlow(__instance) * (deltaTime / __instance.timeMult);
                     float pressureConsumed =  __instance.boilerPressure.value * steamMassConsumed / boilerSteamMass;
