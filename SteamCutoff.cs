@@ -147,11 +147,6 @@ namespace DvMod.SteamCutoff
         private static class SimulateSteamPatch
         {
             private const float PASSIVE_LEAK_ADJUST = 0.1f;
-            private const float STEAM_TEMP_COEFF = 8.31446261815324f / 18E-3f; // J/(kg*K) = Pa * m^3 / kg / K
-            private const float CUBIC_METERS_PER_LITER = 1e-3f;
-            private const float BAR_PER_PASCAL = 1e-5f;
-            private const float ATMOSPHERIC_PRESSURE = 1.01325f;
-            private const float KELVIN_OFFSET = 273.15f;
 
             private static readonly Dictionary<SteamLocoSimulation, float> waterTemp = new Dictionary<SteamLocoSimulation, float>();
             private static readonly Dictionary<SteamLocoSimulation, float> smoothedEvaporationRate = new Dictionary<SteamLocoSimulation, float>();
@@ -185,10 +180,7 @@ namespace DvMod.SteamCutoff
                 if (!waterTempStored)
                     currentWaterTemp = boilingTemp;
                 float currentWaterMass = boilerWaterAmount * SteamTables.WaterDensityByTemp(currentWaterTemp);
-                float currentSteamMass = (boilerPressure + ATMOSPHERIC_PRESSURE) / BAR_PER_PASCAL * // Pa
-                    BoilerSteamVolume(boilerWaterAmount) * CUBIC_METERS_PER_LITER /                 // Pa * m^3
-                    STEAM_TEMP_COEFF /                                                              // kg * K
-                    (currentWaterTemp + KELVIN_OFFSET);                                             // kg
+                float currentSteamMass = IdealGasSteam.Mass(boilerPressure, currentWaterTemp, BoilerSteamVolume(boilerWaterAmount));
 
                 float newWaterMass = currentWaterMass + waterAdded;
                 currentWaterTemp = ((currentWaterMass * currentWaterTemp) + (waterAdded * Constants.FeedwaterTemp)) / newWaterMass;
@@ -206,7 +198,7 @@ namespace DvMod.SteamCutoff
                     newWaterLevel = currentWaterMass / SteamTables.WaterDensityByTemp(currentWaterTemp);
 
                     currentSteamMass += evaporatedMassLimit;
-                    newSteamPressure = (BAR_PER_PASCAL * STEAM_TEMP_COEFF * currentSteamMass * (currentWaterTemp + KELVIN_OFFSET) / BoilerSteamVolume(newWaterLevel) / CUBIC_METERS_PER_LITER) - ATMOSPHERIC_PRESSURE;
+                    newSteamPressure = IdealGasSteam.Pressure(currentSteamMass, currentWaterTemp, BoilerSteamVolume(newWaterLevel));
 
                     if (waterTempStored)
                     {
@@ -237,7 +229,7 @@ namespace DvMod.SteamCutoff
                         float testWaterLevel = testWaterMass / SteamTables.WaterDensityByTemp(testWaterTemp);
 
                         float testSteamMass = currentSteamMass + testEvaporatedMass;
-                        float testSteamPressure = (BAR_PER_PASCAL * STEAM_TEMP_COEFF * testSteamMass * (testWaterTemp + KELVIN_OFFSET) / BoilerSteamVolume(testWaterLevel) / CUBIC_METERS_PER_LITER) - ATMOSPHERIC_PRESSURE;
+                        float testSteamPressure = IdealGasSteam.Pressure(testSteamMass, testWaterTemp, BoilerSteamVolume(testWaterLevel));
 
                         if (++iterations >= 10 || maxEvaporatedMass - minEvaporatedMass <= 0.01f * Mathf.Abs(testEvaporatedMass))
                         {
