@@ -11,10 +11,14 @@ namespace DvMod.SteamCutoff
         private const float MaxFiringRate = 180f /* lb/ft^2/h */ * 0.4535f /* kg/lb */ * 70f /* ft^2 */ / 3600f /* s/h */;
 
         private const float SteamGasConstant = 8.31446261815324f / 18E-3f; // J/(kg*K)
+        
+        // Used as a struct
+        private class WaterState
+        {
+            public float waterTemp, smoothedEvaporationRate, smoothedEvaporationRateChange;
+        }
 
-        private static readonly Dictionary<SteamLocoSimulation, float> waterTemp = new Dictionary<SteamLocoSimulation, float>();
-        private static readonly Dictionary<SteamLocoSimulation, float> smoothedEvaporationRate = new Dictionary<SteamLocoSimulation, float>();
-        private static readonly Dictionary<SteamLocoSimulation, float> smoothedEvaporationRateChange = new Dictionary<SteamLocoSimulation, float>();
+        private static readonly Dictionary<SteamLocoSimulation, WaterState> boilerStates = new Dictionary<SteamLocoSimulation, WaterState>();
 
         /// <summary>Returns evaporation efficiency at a given firing rate.</summary>
         /// <param name="firingRate">Firing rate in kg/s.</param>
@@ -34,9 +38,8 @@ namespace DvMod.SteamCutoff
             ref float boilerWaterLevel, out float steamMass, out float evaporationRate)
         {
             float boilingTemp = SteamTables.BoilingPoint(boilerPressure);
-            bool waterTempStored = waterTemp.TryGetValue(__instance, out float currentWaterTemp);
-            if (!waterTempStored)
-                currentWaterTemp = boilingTemp;
+            bool waterTempStored = boilerStates.TryGetValue(__instance, out WaterState currentWaterState);
+            float currentWaterTemp = waterTempStored ? currentWaterState.waterTemp : boilingTemp;
             float waterDensity = SteamTables.WaterDensityByTemp(currentWaterTemp);
             float currentWaterMass = boilerWaterLevel * waterDensity;
             steamMass = ((boilerPressure + 1.01325f) * BoilerSteamVolume(boilerWaterLevel)) / (0.01f * SteamGasConstant * (currentWaterTemp + 273.15f));
@@ -45,15 +48,15 @@ namespace DvMod.SteamCutoff
             currentWaterTemp = (currentWaterMass * currentWaterTemp + waterAdded * Constants.FeedwaterTemperature) / newWaterMass;
             currentWaterMass = newWaterMass;
 
-            float waterHeatCapacity = SteamTables.WaterSpecificHeatCapacity(currentWaterTemp);
+            float waterHeatCapacity = SteamTables.WaterSpecificHeatCapacity(currentWaterTemp) * currentWaterMass;
             float boilOffEnergy = SteamTables.SpecificEnthalpyOfVaporization(boilerPressure);
-            float excessEnergy = (currentWaterTemp - boilingTemp) * currentWaterMass * waterHeatCapacity + heatEnergyFromCoal;
+            float excessEnergy = (currentWaterTemp - boilingTemp) * waterHeatCapacity + heatEnergyFromCoal;
             float evaporatedMassLimit = excessEnergy / boilOffEnergy;
-            float newWaterLevel, smoothEvaporation;
+            float newWaterLevel;
 
             if (boilerPressure < 0.05f)
             {
-                float evaporatedMass = heatEnergyFromCoal / boilOffEnergy;
+                float evaporatedMass = heatEnergyFromCoal / boilOffEnergy;  // Prevent pressure from jumping up when draining steam
                 currentWaterMass -= evaporatedMass;
                 evaporationRate = evaporatedMass / deltaTime;
                 newWaterLevel = currentWaterMass / SteamTables.WaterDensityByTemp(currentWaterTemp);
@@ -62,11 +65,7 @@ namespace DvMod.SteamCutoff
                 boilerPressure = 0.01f * SteamGasConstant * ((steamMass * (currentWaterTemp + 273.15f)) / BoilerSteamVolume(newWaterLevel)) - 1.01325f;
 
                 if (waterTempStored)
-                {
-                    waterTemp.Remove(__instance);
-                    smoothedEvaporationRate.Remove(__instance);
-                    smoothedEvaporationRateChange.Remove(__instance);
-                }
+                    boilerStates.Remove(__instance);
             }
             else
             {
@@ -82,11 +81,13 @@ namespace DvMod.SteamCutoff
                     maxEvaporatedMass = 0f;
                 }
                 float testEvaporatedMass = 0.5f * evaporatedMassLimit, evaporatedMass;
+                float tempIncreaseFromCoal = currentWaterTemp + heatEnergyFromCoal / waterHeatCapacity;
+                float boilOffTempDropPerKG = boilOffEnergy / waterHeatCapacity;
                 int iterations = 0;
                 while (true)
                 {
                     float testWaterMass = currentWaterMass - testEvaporatedMass;
-                    float testWaterTemp = currentWaterTemp + (heatEnergyFromCoal - testEvaporatedMass * boilOffEnergy) / (currentWaterMass * waterHeatCapacity);
+                    float testWaterTemp = tempIncreaseFromCoal - testEvaporatedMass * boilOffTempDropPerKG;
                     float testWaterLevel = testWaterMass / waterDensity;
 
                     float testSteamMass = steamMass + testEvaporatedMass;
@@ -109,12 +110,11 @@ namespace DvMod.SteamCutoff
                     testEvaporatedMass = 0.5f * (minEvaporatedMass + maxEvaporatedMass);
                 }
 
-                waterTemp[__instance] = currentWaterTemp;
-                smoothedEvaporationRate.TryGetValue(__instance, out smoothEvaporation);
-                smoothedEvaporationRateChange.TryGetValue(__instance, out float evaporationRateChange);
-                smoothedEvaporationRate[__instance] = evaporationRate = Mathf.SmoothDamp(smoothEvaporation,
-                    evaporatedMass / deltaTime, ref evaporationRateChange, 0.5f, Mathf.Infinity, deltaTime);
-                smoothedEvaporationRateChange[__instance] = evaporationRateChange;
+                if (!waterTempStored)
+                    boilerStates[__instance] = currentWaterState = new WaterState();
+                currentWaterState.waterTemp = currentWaterTemp;
+                currentWaterState.smoothedEvaporationRate = evaporationRate = Mathf.SmoothDamp(currentWaterState.smoothedEvaporationRate,
+                    evaporatedMass / deltaTime, ref currentWaterState.smoothedEvaporationRateChange, 0.5f, Mathf.Infinity, deltaTime);
             }
         }
     }
