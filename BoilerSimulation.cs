@@ -96,7 +96,7 @@ namespace DvMod.SteamCutoff
                     {
                         evaporatedMass = testEvaporatedMass;
                         currentWaterTemp = testWaterTemp;
-                        boilerWaterLevel = testWaterLevel;
+                        boilerWaterLevel = testWaterMass / SteamTables.WaterDensityByTemp(currentWaterTemp);
                         steamMass = testSteamMass;
                         boilerPressure = testSteamPressure;
                         break;
