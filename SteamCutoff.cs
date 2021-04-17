@@ -139,14 +139,6 @@ namespace DvMod.SteamCutoff
                 __instance.tenderWater.PassValueToNext(__instance.boilerWater, waterVolumeToInject);
                 __instance.boilerWater.AddNextValue(-4000f * __instance.waterDump.value * deltaTime);
 
-                // Saturated steam doesn't act like compressed air
-                /*
-                float steamVolumeBefore = BoilerSteamVolume(__instance.boilerWater.value);
-                float steamVolumeAfter = BoilerSteamVolume(__instance.boilerWater.nextValue);
-                float pressureAfter = __instance.boilerPressure.value * steamVolumeBefore / steamVolumeAfter;
-                __instance.boilerPressure.SetNextValue(pressureAfter);
-                */
-
                 return false;
             }
         }
@@ -172,10 +164,6 @@ namespace DvMod.SteamCutoff
                 FireState state = FireState.Instance(__instance);
                 float boilerPressure = __instance.boilerPressure.value, boilerWaterAmount = __instance.boilerWater.value;
 
-                // water heating
-                float waterAdded = Mathf.Max(0f, __instance.boilerWater.nextValue - boilerWaterAmount); // L
-                //float waterHeatingEnergy = (SteamTables.BoilingPoint(boilerPressure) - 15f) * waterAdded; // kJ
-
                 // heat from boiler
                 var heatPower = state.SmoothedHeatYieldRate(__instance.fireOn.value > 0f); // in kW
                 __instance.temperature.SetNextValue(Mathf.Lerp(
@@ -187,20 +175,7 @@ namespace DvMod.SteamCutoff
                 float heatEnergyFromCoal = heatPower * (deltaTime / __instance.timeMult); // in kJ
 
                 // evaporation
-                /*
-                float evaporationMass = (heatEnergyFromCoal - waterHeatingEnergy) / SteamTables.SpecificEnthalpyOfVaporization(__instance);
-                HeadsUpDisplayBridge.instance?.UpdateWaterEvap(loco, evaporationMass / (deltaTime / __instance.timeMult));
-                float evaporationVolume = evaporationMass / SteamTables.WaterDensity(__instance);
-
-                __instance.boilerWater.AddNextValue(-evaporationVolume);
-
-                float boilerSteamVolume = BoilerSteamVolume(__instance.boilerWater.value);
-                float boilerSteamMass = boilerSteamVolume * SteamTables.SteamDensity(__instance);
-                float newPressure = ((boilerPressure + 1f) * (boilerSteamMass + evaporationMass) / boilerSteamMass) - 1f;
-                __instance.boilerPressure.AddNextValue(newPressure - boilerPressure);
-                */
-                // Main.DebugLog($"oldPressure={__instance.boilerPressure.value}, oldMass={boilerSteamMass}, newMass={boilerSteamMass + evaporationMass}, newPressure={newPressure}");
-
+                float waterAdded = Mathf.Max(0f, __instance.boilerWater.nextValue - boilerWaterAmount); // L
                 float boilingTemp = SteamTables.BoilingPoint(boilerPressure);
                 bool waterTempStored = waterTemp.TryGetValue(__instance, out float currentWaterTemp);
                 if (!waterTempStored)
