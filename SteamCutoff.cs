@@ -202,9 +202,9 @@ namespace DvMod.SteamCutoff
                 currentWaterTemp = ((currentWaterMass * currentWaterTemp) + (waterAdded * Constants.FeedwaterTemp)) / newWaterMass;
                 currentWaterMass = newWaterMass;
 
-                float waterHeatCapacity = SteamTables.WaterSpecificHeatCapacity(currentWaterTemp);
+                float heatCapacity = currentWaterMass * SteamTables.WaterSpecificHeatCapacity(currentWaterTemp); // kJ/K
                 float boilOffEnergy = SteamTables.SpecificEnthalpyOfVaporization(boilerPressure);
-                float excessEnergy = ((currentWaterTemp - boilingTemp) * currentWaterMass * waterHeatCapacity) + heatEnergyFromCoal;
+                float excessEnergy = ((currentWaterTemp - boilingTemp) * heatCapacity) + heatEnergyFromCoal;
                 float evaporatedMassLimit = excessEnergy / boilOffEnergy;
                 float newWaterLevel, newSteamPressure;
                 if (boilerPressure < 0.05f)
@@ -221,31 +221,24 @@ namespace DvMod.SteamCutoff
                 }
                 else
                 {
-                    float minEvaporatedMass, maxEvaporatedMass;
-                    if (evaporatedMassLimit >= 0f)
-                    {
-                        minEvaporatedMass = 0f;
-                        maxEvaporatedMass = evaporatedMassLimit;
-                    }
-                    else
-                    {
-                        minEvaporatedMass = evaporatedMassLimit;
-                        maxEvaporatedMass = 0f;
-                    }
-                    float testEvaporatedMass = 0.5f * evaporatedMassLimit, evaporatedMass;
+                    // binary search on actual evaporated mass to remain on the saturation curve
+                    float minEvaporatedMass = Mathf.Min(0f, evaporatedMassLimit);
+                    float maxEvaporatedMass = Mathf.Max(0f, evaporatedMassLimit);
+                    float evaporatedMass = 0.5f * evaporatedMassLimit;
                     int iterations = 0;
                     while (true)
                     {
-                        float testWaterMass = currentWaterMass - testEvaporatedMass;
-                        float testWaterTemp = currentWaterTemp + (heatEnergyFromCoal - (testEvaporatedMass * boilOffEnergy)) / (currentWaterMass * waterHeatCapacity);
+                        float testWaterMass = currentWaterMass - evaporatedMass;
+                        float testSteamMass = currentSteamMass + evaporatedMass;
+
+                        float evaporationEnergy = evaporatedMass * boilOffEnergy;
+                        float testWaterTemp = currentWaterTemp + (heatEnergyFromCoal - evaporationEnergy) / heatCapacity;
                         float testWaterLevel = testWaterMass / SteamTables.WaterDensityByTemp(testWaterTemp);
 
-                        float testSteamMass = currentSteamMass + testEvaporatedMass;
                         float testSteamPressure = IdealGasSteam.Pressure(testSteamMass, testWaterTemp, BoilerSteamVolume(testWaterLevel));
 
-                        if (++iterations >= 10 || maxEvaporatedMass - minEvaporatedMass <= 0.01f * Mathf.Abs(testEvaporatedMass))
+                        if (++iterations >= 10 || maxEvaporatedMass - minEvaporatedMass <= 0.01f * Mathf.Abs(evaporatedMass))
                         {
-                            evaporatedMass = testEvaporatedMass;
                             currentWaterTemp = testWaterTemp;
                             newWaterLevel = testWaterLevel;
                             currentSteamMass = testSteamMass;
@@ -254,10 +247,10 @@ namespace DvMod.SteamCutoff
                         }
 
                         if (testWaterTemp < SteamTables.BoilingPoint(testSteamPressure))
-                            maxEvaporatedMass = testEvaporatedMass;
+                            maxEvaporatedMass = evaporatedMass;
                         else
-                            minEvaporatedMass = testEvaporatedMass;
-                        testEvaporatedMass = (minEvaporatedMass + maxEvaporatedMass) / 2f;
+                            minEvaporatedMass = evaporatedMass;
+                        evaporatedMass = (minEvaporatedMass + maxEvaporatedMass) / 2f;
                     }
 
                     boilerState.waterTemp = currentWaterTemp;

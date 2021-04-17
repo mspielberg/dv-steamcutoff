@@ -48,6 +48,11 @@ namespace DvMod.SteamCutoff
             SteamSpecificGasConstant * mass * (temp + KELVIN_OFFSET) /
             (volume * CUBIC_METERS_PER_LITER)) - ATMOSPHERIC_PRESSURE;
 
+        /// <summary>Mass of steam as ideal gas.</summary>
+        /// <param name="pressure">Gauge pressure in bar.</param>
+        /// <param name="temp">Temperature in degrees Celsius.</param>
+        /// <param name="volume">Volume in L.</param>
+        /// <returns>Mass in kg.</returns>
         public static float Mass(float pressure, float temp, float volume) =>
             (pressure + ATMOSPHERIC_PRESSURE) / BAR_PER_PASCAL *
             volume * CUBIC_METERS_PER_LITER /
