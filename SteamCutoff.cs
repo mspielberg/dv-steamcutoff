@@ -223,58 +223,6 @@ namespace DvMod.SteamCutoff
         [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateCylinder")]
         private static class SimulateCylinderPatch
         {
-            private const float SINUSOID_AVERAGE = 2f / Mathf.PI;
-            private static float InstantaneousCylinderPowerRatio(float cutoff, float pistonPosition)
-            {
-                float pressureRatio = pistonPosition <= cutoff ? 1f : cutoff / pistonPosition;
-                float angleRatio = Mathf.Sin(Mathf.PI * pistonPosition) / SINUSOID_AVERAGE;
-                return pressureRatio * angleRatio;
-            }
-
-            // Assume: cyl2 is leading cyl1 by 90 degrees (0.25 rotation)
-            // Piston position moves through 1 stroke every 0.5 rotation
-            // 0 <= rotation < 0.25
-            //    cyl1 acting forward, position = rotation * 2
-            //    cyl2 acting forward, position = (rotation + 0.25) * 2
-            // 0.25 <= rotation < 0.5
-            //    cyl1 acting forward, position = rotation * 2
-            //    cyl2 acting backward, position = (rotation + 0.25) % 0.5 * 2
-            // 0.5 <= rotation < 0.75
-            //    cyl1 acting backward, position = (rotation - 0.5) * 2
-            //    cyl2 acting backward, position = (rotation - 0.25) * 2
-            // 0.75 <= rotation < 1
-            //    cyl1 acting backward, position = (rotation - 0.5) * 2
-            //    cyl2 acting forward, position = (rotation - 0.75) * 2
-            private static float InstantaneousPowerRatio(float cutoff, float rotation)
-            {
-                float pistonPosition1 = rotation % 0.5f * 2f;
-                float pistonPosition2 = (rotation + 0.25f) % 0.5f * 2f;
-                return InstantaneousCylinderPowerRatio(cutoff, pistonPosition1) +
-                    InstantaneousCylinderPowerRatio(cutoff, pistonPosition2);
-            }
-
-            private static float AveragePowerRatio(float cutoff)
-            {
-                float injectionPower = cutoff;
-                float expansionPower = cutoff * -Mathf.Log(cutoff);
-                float totalPower = injectionPower + expansionPower;
-                return totalPower * (1f - (0.7f * Mathf.Exp(-15f * cutoff)));
-            }
-
-            private const float LowSpeedTransitionStart = 10f;
-            private const float LowSpeedTransitionWidth = 5;
-
-            private static float PowerRatio(float cutoff, float speed, float revolution)
-            {
-                if (!settings.enableLowSpeedSimulation)
-                    return AveragePowerRatio(cutoff);
-
-                return Mathf.Lerp(
-                    InstantaneousPowerRatio(cutoff, revolution),
-                    AveragePowerRatio(cutoff),
-                    (speed - LowSpeedTransitionStart) / LowSpeedTransitionWidth);
-            }
-
             public static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
             {
                 if (!enabled)
@@ -288,10 +236,12 @@ namespace DvMod.SteamCutoff
                 {
                     float boilerPressureRatio =
                         __instance.boilerPressure.value / SteamLocoSimulation.BOILER_PRESSURE_MAX_KG_PER_SQR_CM;
-                    float steamChestPressureRatio = boilerPressureRatio * __instance.regulator.value;
+                    float regulator = __instance.regulator.value;
+                    float steamChestPressureRatio = boilerPressureRatio * regulator;
 
                     var chuff = __instance.GetComponent<ChuffController>();
-                    float powerRatio = PowerRatio(cutoff, __instance.speed.value, chuff.dbgCurrentRevolution);
+                    float powerRatio = CylinderSimulation.PowerRatio(settings.enableLowSpeedSimulation, regulator, cutoff, __instance.speed.value, 
+                        chuff.dbgCurrentRevolution, Mathf.Max(__instance.temperature.value, SteamTables.BoilingPoint(__instance)), __instance);
                     __instance.power.SetNextValue(steamChestPressureRatio * powerRatio * SteamLocoSimulation.POWER_CONST_HP);
 
                     float boilerSteamVolume = BoilerSteamVolume(__instance.boilerWater.value);
