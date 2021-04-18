@@ -283,7 +283,7 @@ namespace DvMod.SteamCutoff
                     return false;
 
                 var loco = __instance.GetComponent<TrainCar>();
-                float cutoff = Mathf.Pow(__instance.cutoff.value, Constants.CutoffGamma) * 0.85f;
+                float cutoff = CylinderSimulation.Cutoff(__instance);
                 if (cutoff > 0)
                 {
                     float boilerPressureRatio =
