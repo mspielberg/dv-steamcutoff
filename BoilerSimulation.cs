@@ -45,12 +45,17 @@ namespace DvMod.SteamCutoff
             float boilOffEnergy = SteamTables.SpecificEnthalpyOfVaporization(boilerPressure);
             float excessEnergy = ((waterTemp - boilingTemp) * heatCapacity) + heatEnergyFromCoal;
             float evaporatedMassLimit = excessEnergy / boilOffEnergy;
-            float newWaterLevel, newSteamPressure;
+            float initialWaterDensity = SteamTables.WaterDensityByTemp(waterTemp);
+
+            // output variables
+            float newWaterLevel;
+            float newSteamPressure = boilerPressure;  // satisfy the compiler; overwritten below
+
             if (boilerPressure < 0.05f)
             {
                 float evaporatedMass = heatEnergyFromCoal / boilOffEnergy;
                 currentWaterMass -= evaporatedMass;
-                newWaterLevel = currentWaterMass / SteamTables.WaterDensityByTemp(waterTemp);
+                newWaterLevel = currentWaterMass / initialWaterDensity;
 
                 currentSteamMass += evaporatedMass;
                 newSteamPressure = IdealGasSteam.Pressure(currentSteamMass, waterTemp, BoilerSteamVolume(newWaterLevel));
@@ -61,38 +66,37 @@ namespace DvMod.SteamCutoff
             }
             else
             {
+                float initialSteamMass = currentSteamMass;
+                float initialWaterMass = currentWaterMass;
+                float initialWaterTemp = waterTemp;
+
                 // binary search on actual evaporated mass to remain on the saturation curve
                 float minEvaporatedMass = Mathf.Min(0f, evaporatedMassLimit);
                 float maxEvaporatedMass = Mathf.Max(0f, evaporatedMassLimit);
                 float evaporatedMass = 0.5f * evaporatedMassLimit;
-                float waterDensity = SteamTables.WaterDensityByTemp(waterTemp);
-                int iterations = 0;
-                while (true)
+                for (int i = 0; i < 10; i++)
                 {
-                    float testWaterMass = currentWaterMass - evaporatedMass;
-                    float testSteamMass = currentSteamMass + evaporatedMass;
+                    currentWaterMass = initialWaterMass - evaporatedMass;
+                    currentSteamMass = initialSteamMass + evaporatedMass;
 
                     float evaporationEnergy = evaporatedMass * boilOffEnergy;
-                    float testWaterTemp = waterTemp + ((heatEnergyFromCoal - evaporationEnergy) / heatCapacity);
-                    float testWaterLevel = testWaterMass / waterDensity;
+                    waterTemp = initialWaterTemp + ((heatEnergyFromCoal - evaporationEnergy) / heatCapacity);
+                    newWaterLevel = currentWaterMass / initialWaterDensity; // approximation, compensate after loop
 
-                    float testSteamPressure = IdealGasSteam.Pressure(testSteamMass, testWaterTemp, BoilerSteamVolume(testWaterLevel));
+                    newSteamPressure = IdealGasSteam.Pressure(currentSteamMass, waterTemp, BoilerSteamVolume(newWaterLevel));
 
-                    if (++iterations >= 10 || maxEvaporatedMass - minEvaporatedMass <= 0.01f * Mathf.Abs(evaporatedMass))
-                    {
-                        waterTemp = testWaterTemp;
-                        newWaterLevel = testWaterMass / SteamTables.WaterDensityByTemp(waterTemp);
-                        currentSteamMass = testSteamMass;
-                        newSteamPressure = testSteamPressure;
+                    if (maxEvaporatedMass - minEvaporatedMass <= 0.01f * Mathf.Abs(evaporatedMass))
                         break;
-                    }
 
-                    if (testWaterTemp < SteamTables.BoilingPoint(testSteamPressure))
+                    if (waterTemp < SteamTables.BoilingPoint(newSteamPressure))
                         maxEvaporatedMass = evaporatedMass;
                     else
                         minEvaporatedMass = evaporatedMass;
                     evaporatedMass = (minEvaporatedMass + maxEvaporatedMass) / 2f;
                 }
+
+                // update water level to reflect density change with temperature
+                newWaterLevel = currentWaterMass / SteamTables.WaterDensityByTemp(waterTemp);
 
                 smoothedEvapRate = Mathf.SmoothDamp(
                     smoothedEvapRate,
