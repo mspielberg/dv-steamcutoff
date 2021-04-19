@@ -215,36 +215,43 @@ namespace DvMod.SteamCutoff
 
                 var loco = __instance.GetComponent<TrainCar>();
                 float cutoff = CylinderSimulation.Cutoff(__instance);
-                if (cutoff > 0)
-                {
-                    float boilerPressureRatio =
-                        __instance.boilerPressure.value / SteamLocoSimulation.BOILER_PRESSURE_MAX_KG_PER_SQR_CM;
-                    float regulator = __instance.regulator.value;
-                    float steamChestPressureRatio = boilerPressureRatio * regulator;
+                float boilerPressureRatio =
+                    __instance.boilerPressure.value / SteamLocoSimulation.BOILER_PRESSURE_MAX_KG_PER_SQR_CM;
+                float regulator = __instance.regulator.value;
+                float steamChestPressureRatio = boilerPressureRatio * regulator;
 
-                    var chuff = __instance.GetComponent<ChuffController>();
-                    float powerRatio = CylinderSimulation.PowerRatio(settings.enableLowSpeedSimulation, regulator, cutoff, __instance.speed.value, 
-                        chuff.dbgCurrentRevolution, Mathf.Max(__instance.temperature.value, SteamTables.BoilingPoint(__instance)), __instance);
-                    __instance.power.SetNextValue(steamChestPressureRatio * powerRatio * SteamLocoSimulation.POWER_CONST_HP);
+                var chuff = __instance.GetComponent<ChuffController>();
+                float cylinderSteamTemp = Mathf.Max(__instance.temperature.value, SteamTables.BoilingPoint(__instance));
+                float powerRatio = CylinderSimulation.PowerRatio(settings.enableLowSpeedSimulation, regulator, cutoff, __instance.speed.value, 
+                    chuff.dbgCurrentRevolution, cylinderSteamTemp, __instance);
+                __instance.power.SetNextValue(steamChestPressureRatio * powerRatio * SteamLocoSimulation.POWER_CONST_HP);
+                chuff.chuffPower = CylinderSimulation.ResidualPressureRatio(cutoff, cylinderSteamTemp) * steamChestPressureRatio;
 
-                    float boilerSteamVolume = BoilerSteamVolume(__instance.boilerWater.value);
-                    float boilerSteamMass = boilerSteamVolume * SteamTables.SteamDensity(__instance);
-                    float steamMassConsumed = CylinderSimulation.CylinderSteamMassFlow(__instance) * (deltaTime / __instance.timeMult);
-                    float pressureConsumed =  __instance.boilerPressure.value * steamMassConsumed / boilerSteamMass;
-                    __instance.boilerPressure.AddNextValue(-pressureConsumed);
-                    HeadsUpDisplayBridge.instance?.UpdateSteamUsage(loco, steamMassConsumed / (deltaTime / __instance.timeMult));
-                }
+                float boilerSteamVolume = BoilerSteamVolume(__instance.boilerWater.value);
+                float boilerSteamMass = boilerSteamVolume * SteamTables.SteamDensity(__instance);
+                float steamMassConsumed = CylinderSimulation.CylinderSteamMassFlow(__instance) * (deltaTime / __instance.timeMult);
+                float pressureConsumed =  __instance.boilerPressure.value * steamMassConsumed / boilerSteamMass;
+                __instance.boilerPressure.AddNextValue(-pressureConsumed);
+                HeadsUpDisplayBridge.instance?.UpdateSteamUsage(loco, steamMassConsumed / (deltaTime / __instance.timeMult));
+
                 return false;
             }
         }
 
         [HarmonyPatch(typeof(ChuffController), nameof(ChuffController.Update))]
-        public static class ChuffControllerPatch
+        public static class ChuffControllerUpdatePatch
         {
-            public static bool Prefix(ChuffController __instance)
+            private static float chuffPower;
+
+            public static void Prefix(ChuffController __instance)
             {
+                chuffPower = __instance.chuffPower;
                 __instance.chuffsPerRevolution = 4;
-                return true;
+            }
+
+            public static void Postfix(ChuffController __instance)
+            {
+                __instance.chuffPower = chuffPower;
             }
         }
 
