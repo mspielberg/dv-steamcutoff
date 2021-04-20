@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 using HarmonyLib;
 using System;
 using UnityEngine;
@@ -137,11 +139,6 @@ namespace DvMod.SteamCutoff
                 __instance.tenderWater.PassValueToNext(__instance.boilerWater, waterVolumeToInject);
                 __instance.boilerWater.AddNextValue(-4000f * __instance.waterDump.value * deltaTime);
 
-                float steamVolumeBefore = BoilerSteamVolume(__instance.boilerWater.value);
-                float steamVolumeAfter = BoilerSteamVolume(__instance.boilerWater.nextValue);
-                float pressureAfter = __instance.boilerPressure.value * steamVolumeBefore / steamVolumeAfter;
-                __instance.boilerPressure.SetNextValue(pressureAfter);
-
                 return false;
             }
         }
@@ -158,17 +155,13 @@ namespace DvMod.SteamCutoff
                 if (deltaTime <= 0)
                     return false;
 
-                TrainCar loco = __instance.GetComponent<TrainCar>();
                 FireState state = FireState.Instance(__instance);
+                float boilerPressure = __instance.boilerPressure.value, boilerWaterAmount = __instance.boilerWater.value;
 
-                // water heating
-                float waterAdded = Mathf.Max(0f, __instance.boilerWater.nextValue - __instance.boilerWater.value); // L
-                float waterHeatingEnergy = (SteamTables.BoilingPoint(__instance.boilerPressure.value) - 15f) * waterAdded; // kJ
-
-                // heat from boiler
+                // heat from firebox
                 var heatPower = state.SmoothedHeatYieldRate(__instance.fireOn.value > 0f); // in kW
                 __instance.temperature.SetNextValue(Mathf.Lerp(
-                    SteamTables.BoilingPoint(__instance.boilerPressure.value),
+                    SteamTables.BoilingPoint(boilerPressure),
                     1200f,
                     Mathf.Pow(
                         Mathf.InverseLerp(0, Constants.TemperatureGaugeMaxPower, heatPower),
@@ -176,23 +169,13 @@ namespace DvMod.SteamCutoff
                 float heatEnergyFromCoal = heatPower * (deltaTime / __instance.timeMult); // in kJ
 
                 // evaporation
-                float evaporationMass = (heatEnergyFromCoal - waterHeatingEnergy) / SteamTables.SpecificEnthalpyOfVaporization(__instance);
-                HeadsUpDisplayBridge.instance?.UpdateWaterEvap(loco, evaporationMass / (deltaTime / __instance.timeMult));
-                float evaporationVolume = evaporationMass / SteamTables.WaterDensity(__instance);
-
-                __instance.boilerWater.AddNextValue(-evaporationVolume);
-
-                float boilerSteamVolume = BoilerSteamVolume(__instance.boilerWater.value);
-                float boilerSteamMass = boilerSteamVolume * SteamTables.SteamDensity(__instance);
-                float newPressure = ((__instance.boilerPressure.value + 1f) * (boilerSteamMass + evaporationMass) / boilerSteamMass) - 1f;
-                __instance.boilerPressure.AddNextValue(newPressure - __instance.boilerPressure.value);
-                // Main.DebugLog($"oldPressure={__instance.boilerPressure.value}, oldMass={boilerSteamMass}, newMass={boilerSteamMass + evaporationMass}, newPressure={newPressure}");
-
-                HeadsUpDisplayBridge.instance?.UpdateBoilerSteamMass(loco, boilerSteamVolume * SteamTables.SteamDensity(__instance));
+                var boilerSim = BoilerSimulation.Instance(__instance);
+                float waterAdded = Mathf.Max(0f, __instance.boilerWater.nextValue - boilerWaterAmount); // L
+                boilerSim.Update(waterAdded, heatEnergyFromCoal, deltaTime);
 
                 // steam release
                 if (__instance.steamReleaser.value > 0.0f && __instance.boilerPressure.value > 0.0f)
-                    __instance.boilerPressure.AddNextValue(-__instance.steamReleaser.value * 3.0f * deltaTime);
+                    __instance.boilerPressure.AddNextValue(-__instance.steamReleaser.value * 30.0f * deltaTime);
 
                 // safety valve
                 const float SAFETY_VALVE_BLOWOFF = 0.2f; // 3 psi
@@ -232,36 +215,43 @@ namespace DvMod.SteamCutoff
 
                 var loco = __instance.GetComponent<TrainCar>();
                 float cutoff = CylinderSimulation.Cutoff(__instance);
-                if (cutoff > 0)
-                {
-                    float boilerPressureRatio =
-                        __instance.boilerPressure.value / SteamLocoSimulation.BOILER_PRESSURE_MAX_KG_PER_SQR_CM;
-                    float regulator = __instance.regulator.value;
-                    float steamChestPressureRatio = boilerPressureRatio * regulator;
+                float boilerPressureRatio =
+                    __instance.boilerPressure.value / SteamLocoSimulation.BOILER_PRESSURE_MAX_KG_PER_SQR_CM;
+                float regulator = __instance.regulator.value;
+                float steamChestPressureRatio = boilerPressureRatio * regulator;
 
-                    var chuff = __instance.GetComponent<ChuffController>();
-                    float powerRatio = CylinderSimulation.PowerRatio(settings.enableLowSpeedSimulation, regulator, cutoff, __instance.speed.value, 
-                        chuff.dbgCurrentRevolution, Mathf.Max(__instance.temperature.value, SteamTables.BoilingPoint(__instance)), __instance);
-                    __instance.power.SetNextValue(steamChestPressureRatio * powerRatio * SteamLocoSimulation.POWER_CONST_HP);
+                var chuff = __instance.GetComponent<ChuffController>();
+                float cylinderSteamTemp = Mathf.Max(__instance.temperature.value, SteamTables.BoilingPoint(__instance));
+                float powerRatio = CylinderSimulation.PowerRatio(settings.enableLowSpeedSimulation, regulator, cutoff, __instance.speed.value, 
+                    chuff.dbgCurrentRevolution, cylinderSteamTemp, __instance);
+                __instance.power.SetNextValue(steamChestPressureRatio * powerRatio * SteamLocoSimulation.POWER_CONST_HP);
+                chuff.chuffPower = CylinderSimulation.ResidualPressureRatio(cutoff, cylinderSteamTemp) * steamChestPressureRatio;
 
-                    float boilerSteamVolume = BoilerSteamVolume(__instance.boilerWater.value);
-                    float boilerSteamMass = boilerSteamVolume * SteamTables.SteamDensity(__instance);
-                    float steamMassConsumed = CylinderSimulation.CylinderSteamMassFlow(__instance) * (deltaTime / __instance.timeMult);
-                    float pressureConsumed =  __instance.boilerPressure.value * steamMassConsumed / boilerSteamMass;
-                    __instance.boilerPressure.AddNextValue(-pressureConsumed);
-                    HeadsUpDisplayBridge.instance?.UpdateSteamUsage(loco, steamMassConsumed / (deltaTime / __instance.timeMult));
-                }
+                float boilerSteamVolume = BoilerSteamVolume(__instance.boilerWater.value);
+                float boilerSteamMass = boilerSteamVolume * SteamTables.SteamDensity(__instance);
+                float steamMassConsumed = CylinderSimulation.CylinderSteamMassFlow(__instance) * (deltaTime / __instance.timeMult);
+                float pressureConsumed =  __instance.boilerPressure.value * steamMassConsumed / boilerSteamMass;
+                __instance.boilerPressure.AddNextValue(-pressureConsumed);
+                HeadsUpDisplayBridge.instance?.UpdateSteamUsage(loco, steamMassConsumed / (deltaTime / __instance.timeMult));
+
                 return false;
             }
         }
 
         [HarmonyPatch(typeof(ChuffController), nameof(ChuffController.Update))]
-        public static class ChuffControllerPatch
+        public static class ChuffControllerUpdatePatch
         {
-            public static bool Prefix(ChuffController __instance)
+            private static float chuffPower;
+
+            public static void Prefix(ChuffController __instance)
             {
+                chuffPower = __instance.chuffPower;
                 __instance.chuffsPerRevolution = 4;
-                return true;
+            }
+
+            public static void Postfix(ChuffController __instance)
+            {
+                __instance.chuffPower = chuffPower;
             }
         }
 
