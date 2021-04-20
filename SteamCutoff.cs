@@ -255,6 +255,19 @@ namespace DvMod.SteamCutoff
             }
         }
 
+        [HarmonyPatch(typeof(SteamLocoChuffSmokeParticles), nameof(SteamLocoChuffSmokeParticles.Chuff))]
+        public static class ChuffPatch
+        {
+            public static void Postfix(SteamLocoChuffSmokeParticles __instance)
+            {
+                var chuffController = __instance.GetComponent<ChuffController>();
+                if (chuffController.currentChuff % 2 == 0)
+                    __instance.chuffParticlesRight.Stop();
+                else
+                    __instance.chuffParticlesLeft.Stop();
+            }
+        }
+
         [HarmonyPatch(typeof(SteamLocoSimulation), nameof(SteamLocoSimulation.AddCoalChunk))]
         public static class ShovelPatch
         {
