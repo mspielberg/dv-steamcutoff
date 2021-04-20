@@ -19,11 +19,13 @@ namespace DvMod.SteamCutoff
             [Draw("Min smoke rate")]
             public float minSmokeRate = 5f;
             [Draw("Max smoke rate")]
-            public float maxSmokeRate = 100f;
+            public float maxSmokeRate = 300f;
             [Draw("Min smoke lifetime")]
             public float minSmokeLifetime = 0.5f;
             [Draw("Max smoke lifetime")]
             public float maxSmokeLifetime = 10f;
+            [Draw("Clean smoke opacity", Min = 0f, Max = 1f)]
+            public float cleanSmokeOpacity = 0.1f;
 
             [Draw("Boiler thermal efficiency")]
             public float boilerThermalEfficiency = 0.8f;

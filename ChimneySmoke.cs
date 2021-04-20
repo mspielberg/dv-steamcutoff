@@ -17,8 +17,6 @@ namespace DvMod.SteamCutoff
             }
         }
 
-        private static readonly Color clearSmoke = new Color(1f, 1f, 1f, 0.1f);
-
         public static IEnumerator UpdateSmokeParticles(SteamLocoChuffSmokeParticles __instance)
         {
             WaitForSeconds waitTimeout = WaitFor.Seconds(0.2f);
@@ -39,13 +37,19 @@ namespace DvMod.SteamCutoff
                     __instance.chimneyParticles.Play();
 
                 float volume = Mathf.InverseLerp(Main.settings.minSmokeOxygenSupply, Main.settings.maxSmokeOxygenSupply, state.oxygenSupply);
-                var color = Color.Lerp(Color.black, clearSmoke, state.oxygenAvailability);
+                var rate = Mathf.Lerp(Main.settings.minSmokeRate, Main.settings.maxSmokeRate, volume);
+                var lifetime = Mathf.Lerp(Main.settings.minSmokeLifetime, Main.settings.maxSmokeLifetime, volume);
+
+                var cleanSmoke = new Color(1f, 1f, 1f, Main.settings.cleanSmokeOpacity);
+                var color = Color.Lerp(Color.black, cleanSmoke, state.oxygenAvailability);
 
                 var main = __instance.chimneyParticles.main;
                 main.startColor = color;
-                main.startLifetime = Mathf.Lerp(Main.settings.minSmokeLifetime, Main.settings.maxSmokeLifetime, volume);
+                main.startLifetime = lifetime;
+                main.maxParticles = (int)(Main.settings.maxSmokeLifetime * Main.settings.maxSmokeRate);
                 var emission = __instance.chimneyParticles.emission;
-                emission.rateOverTime = Mathf.Lerp(Main.settings.minSmokeRate, Main.settings.maxSmokeRate, volume);
+                emission.rateOverTime = rate;
+                Main.DebugLog(TrainCar.Resolve(__instance.gameObject), () => $"volume={volume},color={color},rate={rate},lifetime={lifetime}");
             }
         }
     }
