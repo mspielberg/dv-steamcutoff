@@ -107,8 +107,9 @@ namespace DvMod.SteamCutoff
         {
             float condensationExpansionRatio = Mathf.Pow((cylinderSteamTemp + 273.15f) / MinSteamTemperature_K,
                     1f / (SteamAdaiabaticIndex - 1f));
-            float expansionRatio = Mathf.Min(1f / cutoff, condensationExpansionRatio);
-            return Mathf.Pow(expansionRatio, -SteamAdaiabaticIndex);
+            if (1f / cutoff > condensationExpansionRatio)
+                return 0;
+            return Mathf.Pow(1f / cutoff, -SteamAdaiabaticIndex);
         }
     }
 }
