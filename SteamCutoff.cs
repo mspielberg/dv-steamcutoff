@@ -81,6 +81,7 @@ namespace DvMod.SteamCutoff
             public static void Postfix(SteamLocoSimulation __instance)
             {
                 __instance.coalbox.max = Constants.CoalboxCapacity;
+                __instance.boilerPressure.value = Main.settings.initialBoilerPressure;
             }
         }
 
