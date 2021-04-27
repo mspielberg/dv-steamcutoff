@@ -217,7 +217,7 @@ namespace DvMod.SteamCutoff
                 var loco = __instance.GetComponent<TrainCar>();
                 float cutoff = CylinderSimulation.Cutoff(__instance);
                 float boilerPressureRatio =
-                    __instance.boilerPressure.value / SteamLocoSimulation.BOILER_PRESSURE_MAX_KG_PER_SQR_CM;
+                    __instance.boilerPressure.value / Main.settings.safetyValveThreshold;
                 float regulator = __instance.regulator.value;
                 float steamChestPressureRatio = boilerPressureRatio * regulator;
 
@@ -226,7 +226,9 @@ namespace DvMod.SteamCutoff
                 float powerRatio = CylinderSimulation.PowerRatio(settings.enableLowSpeedSimulation, regulator, cutoff, __instance.speed.value, 
                     chuff.dbgCurrentRevolution, cylinderSteamTemp, __instance);
                 __instance.power.SetNextValue(steamChestPressureRatio * powerRatio * SteamLocoSimulation.POWER_CONST_HP);
-                chuff.chuffPower = CylinderSimulation.ResidualPressureRatio(cutoff, cylinderSteamTemp) * steamChestPressureRatio;
+                var residualPressureRatio = Mathf.Clamp01(Mathf.InverseLerp(0f, 0.8f, CylinderSimulation.ResidualPressureRatio(cutoff, cylinderSteamTemp)));
+                chuff.chuffPower = residualPressureRatio * steamChestPressureRatio;
+                // Main.DebugLog(loco, () => $"residualPressure={residualPressureRatio}, steamChestPressure={steamChestPressureRatio}, chuffPower={chuff.chuffPower}");
 
                 float boilerSteamVolume = BoilerSteamVolume(__instance.boilerWater.value);
                 float boilerSteamMass = boilerSteamVolume * SteamTables.SteamDensity(__instance);
