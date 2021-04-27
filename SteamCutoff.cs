@@ -1,5 +1,4 @@
-using System.Collections.Generic;
-
+using DV.CabControls;
 using HarmonyLib;
 using System;
 using UnityEngine;
@@ -109,6 +108,10 @@ namespace DvMod.SteamCutoff
                 HeadsUpDisplayBridge.instance?.UpdateExhaustFlow(loco, exhaustFlow);
                 var oxygenSupplyFlow = state.SetOxygenSupply(exhaustFlow, Mathf.Lerp(0.05f, 1f, __instance.draft.value));
                 HeadsUpDisplayBridge.instance?.UpdateOxygenSupply(loco, oxygenSupplyFlow);
+
+                var fireOutRotary = loco.loadedInterior?.GetComponent<CabInputSteamExtra>()?.fireOutValveObj?.GetComponent<ControlImplBase>();
+                var fireOutValue = 1f - fireOutRotary?.Value ?? 1f;
+                __instance.coalbox.AddNextValue(-10f * fireOutValue * (deltaTime / __instance.timeMult));
 
                 if (__instance.fireOn.value == 1f && __instance.coalbox.value > 0f)
                 {
