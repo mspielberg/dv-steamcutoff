@@ -32,6 +32,7 @@ namespace DvMod.SteamCutoff
                     yield return WaitFor.SecondsRealtime(1f);
                 var state = ExtraState.Instance(__instance.ctrl.sim);
                 var stokerCtrl = __instance.transform.Find("C valve controller/C valve 3").GetComponent<ControlImplBase>();
+                stokerCtrl.SetValue(state.valveOpening);
                 stokerCtrl.ValueChanged += e => state.valveOpening = e.newValue;
             }
 
