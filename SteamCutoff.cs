@@ -109,10 +109,11 @@ namespace DvMod.SteamCutoff
                 var oxygenSupplyFlow = state.SetOxygenSupply(exhaustFlow, Mathf.Lerp(0.05f, 1f, __instance.draft.value));
                 HeadsUpDisplayBridge.instance?.UpdateOxygenSupply(loco, oxygenSupplyFlow);
 
-                var interior = loco.loadedInterior;
-                var fireOutRotary = !interior ? null : interior.GetComponent<CabInputSteamExtra>().fireOutValveObj.GetComponent<ControlImplBase>();
-                var fireOutValue = Mathf.Clamp01(Mathf.InverseLerp(0.5f, 0f, fireOutRotary?.Value ?? 1f));
-                __instance.coalbox.AddNextValue(-10f * fireOutValue * (deltaTime / __instance.timeMult));
+                var extraControlState = ExtraControlState.Instance(__instance);
+                if (loco.loadedInterior == null)
+                    extraControlState.fireOutSetting = 1f;
+                else
+                    __instance.coalbox.AddNextValue(-10f * Mathf.InverseLerp(0.5f, 0f, extraControlState.fireOutSetting) * (deltaTime / __instance.timeMult));
 
                 if (__instance.fireOn.value == 1f && __instance.coalbox.value > 0f)
                 {

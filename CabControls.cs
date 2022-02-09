@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Collections.Generic;
 using DV.CabControls;
 using DV.CabControls.Spec;
 using HarmonyLib;
@@ -36,6 +38,40 @@ namespace DvMod.SteamCutoff
                 __instance.animator.SetFloat(__instance.floatParameterName, Mathf.Clamp(__instance.debugOverride ? __instance.debugValue : 1f - ___hjaf.Percentage, 0.0f, 0.999f));
                 return false;
             }
+        }
+    }
+    public class ExtraControlState
+    {
+        public float stokerSetting;
+        public float fireOutSetting;
+
+        private static readonly Dictionary<SteamLocoSimulation, ExtraControlState> states = new Dictionary<SteamLocoSimulation, ExtraControlState>();
+        public static ExtraControlState Instance(SteamLocoSimulation sim)
+        {
+            if (!states.TryGetValue(sim, out var state))
+                states[sim] = state = new ExtraControlState();
+            return state;
+        }
+    }
+
+    [HarmonyPatch(typeof(CabInputSteamExtra), nameof(CabInputSteamExtra.OnEnable))]
+    public static class CabInputSteamExtraOnEnablePatch
+    {
+        private static IEnumerator AddCallbackCoro(CabInputSteamExtra __instance)
+        {
+            while (!__instance.ctrl || !__instance.ctrl.sim)
+                yield return WaitFor.SecondsRealtime(1f);
+            var state = ExtraControlState.Instance(__instance.ctrl.sim);
+            var stokerCtrl = __instance.transform.Find("C valve controller/C valve 3").GetComponent<ControlImplBase>();
+            stokerCtrl.SetValue(state.stokerSetting);
+            stokerCtrl.ValueChanged += e => state.stokerSetting = e.newValue;
+            var fireOutCtrl = __instance.fireOutValveObj.GetComponent<ControlImplBase>();
+            fireOutCtrl.ValueChanged += e => state.fireOutSetting = e.newValue;
+        }
+
+        public static void Postfix(CabInputSteamExtra __instance)
+        {
+            __instance.StartCoroutine(AddCallbackCoro(__instance));
         }
     }
 }
