@@ -87,7 +87,7 @@ namespace DvMod.SteamCutoff
         [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateBlowerDraftFireCoalTemp")]
         public static class SimulateFirePatch
         {
-            public const float BlowerMaxRate = 10f;
+            public const float BlowerMaxRate = 20f;
             public static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
             {
                 if (!enabled)
