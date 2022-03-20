@@ -30,7 +30,6 @@ namespace DvMod.SteamCutoff
         private readonly Pusher? stokerFeedRatePusher;
 
         // boiler
-        private readonly Pusher? waterEvapPusher;
         private readonly Pusher? boilerSteamMassPusher;
 
         // cylinder
@@ -132,9 +131,14 @@ namespace DvMod.SteamCutoff
                 "Boiler steam mass",
                 v => $"{v:F1} kg");
 
-            RegisterPush(
-                out waterEvapPusher,
+            RegisterPull(
+                "Water temperature",
+                car => BoilerSimulation.Instance(car)?.WaterTemp,
+                v => $"{v:F1} C");
+
+            RegisterPull(
                 "Evaporation",
+                car => BoilerSimulation.Instance(car)?.SmoothedEvapRate,
                 v => $"{v * 3600:F0} kg/h");
 
             RegisterPush(
@@ -147,7 +151,6 @@ namespace DvMod.SteamCutoff
         public void UpdateOxygenSupply(TrainCar car, float oxygenSupply) => oxygenSupplyPusher?.Invoke(car, oxygenSupply);
         public void UpdateStokerFeedRate(TrainCar car, float stokerFeedRate) => stokerFeedRatePusher?.Invoke(car, stokerFeedRate);
 
-        public void UpdateWaterEvap(TrainCar car, float evapKgPerS) => waterEvapPusher?.Invoke(car, evapKgPerS);
         public void UpdateBoilerSteamMass(TrainCar car, float steamMass) => boilerSteamMassPusher?.Invoke(car, steamMass);
 
         public void UpdateSteamUsage(TrainCar car, float steamKgPerS) => steamConsumptionPusher?.Invoke(car, steamKgPerS);

@@ -14,17 +14,23 @@ namespace DvMod.SteamCutoff
             return state;
         }
 
+        public static BoilerSimulation? Instance(TrainCar car)
+        {
+            var sim = car.GetComponent<SteamLocoSimulation>();
+            return sim == null ? null : Instance(sim);
+        }
+
         private readonly SteamLocoSimulation sim;
         private readonly TrainCar loco;
-        private float waterTemp; // deg C
-        private float smoothedEvapRate;
+        public float WaterTemp { get; private set; } // deg C
+        public float SmoothedEvapRate { get; private set; } // kg/s
         private float smoothedEvapRateVel;
 
         private BoilerSimulation(SteamLocoSimulation sim)
         {
             this.sim = sim;
             loco = TrainCar.Resolve(sim.gameObject);
-            waterTemp = SteamTables.BoilingPoint(sim.boilerPressure.value);
+            WaterTemp = SteamTables.BoilingPoint(sim.boilerPressure.value);
         }
 
         private float BoilerSteamVolume(float waterVolume) => (sim.boilerWater.max * 1.05f) - waterVolume;
@@ -34,16 +40,16 @@ namespace DvMod.SteamCutoff
             float boilerPressure = sim.boilerPressure.value;
             float boilerWaterAmount = sim.boilerWater.value;
             float boilingTemp = SteamTables.BoilingPoint(boilerPressure);
-            float currentWaterMass = boilerWaterAmount * SteamTables.WaterDensityByTemp(waterTemp);
-            float currentSteamMass = IdealGasSteam.Mass(boilerPressure, waterTemp, BoilerSteamVolume(boilerWaterAmount));
+            float currentWaterMass = boilerWaterAmount * SteamTables.WaterDensityByTemp(WaterTemp);
+            float currentSteamMass = IdealGasSteam.Mass(boilerPressure, WaterTemp, BoilerSteamVolume(boilerWaterAmount));
 
             float newWaterMass = currentWaterMass + waterAdded;
-            waterTemp = ((currentWaterMass * waterTemp) + (waterAdded * Constants.FeedwaterTemp)) / newWaterMass;
+            WaterTemp = ((currentWaterMass * WaterTemp) + (waterAdded * Constants.FeedwaterTemp)) / newWaterMass;
             currentWaterMass = newWaterMass;
 
-            float heatCapacity = currentWaterMass * SteamTables.WaterSpecificHeatCapacity(waterTemp); // kJ/K
+            float heatCapacity = currentWaterMass * SteamTables.WaterSpecificHeatCapacity(WaterTemp); // kJ/K
             float boilOffEnergy = SteamTables.SpecificEnthalpyOfVaporization(boilerPressure);
-            float excessEnergy = ((waterTemp - boilingTemp) * heatCapacity) + heatEnergyFromCoal;
+            float excessEnergy = ((WaterTemp - boilingTemp) * heatCapacity) + heatEnergyFromCoal;
             float evaporatedMassLimit = excessEnergy / boilOffEnergy;
 
             // output variables
@@ -53,20 +59,20 @@ namespace DvMod.SteamCutoff
 
             if (boilerPressure < 0.05f)
             {
-                waterTemp = boilingTemp;
+                WaterTemp = boilingTemp;
                 evaporatedMass = heatEnergyFromCoal / boilOffEnergy;
                 currentWaterMass -= evaporatedMass;
-                newWaterLevel = currentWaterMass / SteamTables.WaterDensityByTemp(waterTemp);
+                newWaterLevel = currentWaterMass / SteamTables.WaterDensityByTemp(WaterTemp);
 
                 currentSteamMass += evaporatedMass;
-                newSteamPressure = IdealGasSteam.Pressure(currentSteamMass, waterTemp, BoilerSteamVolume(newWaterLevel));
+                newSteamPressure = IdealGasSteam.Pressure(currentSteamMass, WaterTemp, BoilerSteamVolume(newWaterLevel));
             }
             else
             {
                 float initialSteamMass = currentSteamMass;
                 float initialWaterMass = currentWaterMass;
-                float initialWaterTemp = waterTemp;
-                float initialWaterDensity = SteamTables.WaterDensityByTemp(waterTemp);
+                float initialWaterTemp = WaterTemp;
+                float initialWaterDensity = SteamTables.WaterDensityByTemp(WaterTemp);
 
                 // binary search on actual evaporated mass to remain on the saturation curve
                 float minEvaporatedMass = Mathf.Min(0f, evaporatedMassLimit);
@@ -78,15 +84,15 @@ namespace DvMod.SteamCutoff
                     currentSteamMass = initialSteamMass + evaporatedMass;
 
                     float evaporationEnergy = evaporatedMass * boilOffEnergy;
-                    waterTemp = initialWaterTemp + ((heatEnergyFromCoal - evaporationEnergy) / heatCapacity);
+                    WaterTemp = initialWaterTemp + ((heatEnergyFromCoal - evaporationEnergy) / heatCapacity);
                     newWaterLevel = currentWaterMass / initialWaterDensity; // approximation, compensate after loop
 
-                    newSteamPressure = IdealGasSteam.Pressure(currentSteamMass, waterTemp, BoilerSteamVolume(newWaterLevel));
+                    newSteamPressure = IdealGasSteam.Pressure(currentSteamMass, WaterTemp, BoilerSteamVolume(newWaterLevel));
 
                     if (maxEvaporatedMass - minEvaporatedMass <= 0.01f * Mathf.Abs(evaporatedMass))
                         break;
 
-                    if (waterTemp < SteamTables.BoilingPoint(newSteamPressure))
+                    if (WaterTemp < SteamTables.BoilingPoint(newSteamPressure))
                         maxEvaporatedMass = evaporatedMass;
                     else
                         minEvaporatedMass = evaporatedMass;
@@ -94,11 +100,11 @@ namespace DvMod.SteamCutoff
                 }
 
                 // reflect density change with temperature
-                newWaterLevel = currentWaterMass / SteamTables.WaterDensityByTemp(waterTemp);
+                newWaterLevel = currentWaterMass / SteamTables.WaterDensityByTemp(WaterTemp);
             }
 
-            smoothedEvapRate = Mathf.SmoothDamp(
-                smoothedEvapRate,
+            SmoothedEvapRate = Mathf.SmoothDamp(
+                SmoothedEvapRate,
                 evaporatedMass / (deltaTime / sim.timeMult),
                 ref smoothedEvapRateVel,
                 0.5f,
@@ -108,7 +114,6 @@ namespace DvMod.SteamCutoff
             sim.boilerWater.AddNextValue(newWaterLevel - boilerWaterAmount);
             sim.boilerPressure.AddNextValue(newSteamPressure - boilerPressure);
 
-            HeadsUpDisplayBridge.instance?.UpdateWaterEvap(loco, smoothedEvapRate);
             HeadsUpDisplayBridge.instance?.UpdateBoilerSteamMass(loco, currentSteamMass);
         }
     }
