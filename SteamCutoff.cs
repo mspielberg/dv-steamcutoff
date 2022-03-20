@@ -230,14 +230,21 @@ namespace DvMod.SteamCutoff
                 float cylinderSteamTemp = Mathf.Max(__instance.temperature.value, SteamTables.BoilingPoint(__instance));
                 float powerRatio = CylinderSimulation.PowerRatio(settings.enableLowSpeedSimulation, regulator, cutoff, __instance.speed.value, 
                     chuff.dbgCurrentRevolution, cylinderSteamTemp, __instance);
-                __instance.power.SetNextValue(steamChestPressureRatio * powerRatio * SteamLocoSimulation.POWER_CONST_HP);
+                __instance.power.SetNextValue(
+                    Main.settings.torqueMultiplier
+                    * steamChestPressureRatio
+                    * powerRatio
+                    * 0.28f * SteamLocoSimulation.POWER_CONST_HP);
                 var residualPressureRatio = Mathf.Clamp01(Mathf.InverseLerp(0f, 0.8f, CylinderSimulation.ResidualPressureRatio(cutoff, cylinderSteamTemp)));
                 chuff.chuffPower = residualPressureRatio * steamChestPressureRatio;
                 // Main.DebugLog(loco, () => $"residualPressure={residualPressureRatio}, steamChestPressure={steamChestPressureRatio}, chuffPower={chuff.chuffPower}");
 
                 float boilerSteamVolume = BoilerSteamVolume(__instance.boilerWater.value);
                 float boilerSteamMass = boilerSteamVolume * SteamTables.SteamDensity(__instance);
-                float steamMassConsumed = CylinderSimulation.CylinderSteamMassFlow(__instance) * (deltaTime / __instance.timeMult);
+                float steamMassConsumed =
+                    Main.settings.steamConsumptionMultiplier
+                    * 0.7f * CylinderSimulation.CylinderSteamMassFlow(__instance)
+                    * (deltaTime / __instance.timeMult);
                 float pressureConsumed =  __instance.boilerPressure.value * steamMassConsumed / boilerSteamMass;
                 __instance.boilerPressure.AddNextValue(-pressureConsumed);
                 HeadsUpDisplayBridge.instance?.UpdateSteamUsage(loco, steamMassConsumed / (deltaTime / __instance.timeMult));

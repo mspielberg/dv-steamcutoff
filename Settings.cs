@@ -30,7 +30,11 @@ namespace DvMod.SteamCutoff
             public float cleanSmokeOpacity = 0.1f;
 
             [Draw("Boiler thermal efficiency")]
-            public float boilerThermalEfficiency = 0.8f;
+            public float boilerThermalEfficiency = 0.55f;
+            [Draw("Steam consumption multiplier")]
+            public float steamConsumptionMultiplier = 1.0f;
+            [Draw("Torque multiplier")]
+            public float torqueMultiplier = 1.0f;
 
             [Draw("Enable detailed low-speed simulation")]
             public bool enableLowSpeedSimulation = true;
