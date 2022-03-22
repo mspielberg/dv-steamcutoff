@@ -11,8 +11,6 @@ namespace DvMod.SteamCutoff
             public float initialBoilerPressure = 10f;
             [Draw("Max boiler pressure", Min = 0f, Max = 20f)]
             public float safetyValveThreshold = 14f;
-            [Draw("Coal combustion rate")]
-            public float combustionRate = 1.5f;
             [Draw("Safety valve vent rate")]
             public float safetyValveVentRate = 2f;
             // [Draw("Safety valve feathering")]
@@ -35,6 +33,8 @@ namespace DvMod.SteamCutoff
             [Draw("Clean smoke opacity", Min = 0f, Max = 1f)]
             public float cleanSmokeOpacity = 0.1f;
 
+            [Draw("Coal combustion rate")]
+            public float combustionRate = 3.0f;
             [Draw("Boiler thermal efficiency")]
             public float boilerThermalEfficiency = 0.55f;
             [Draw("Steam consumption multiplier")]
