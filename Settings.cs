@@ -13,6 +13,12 @@ namespace DvMod.SteamCutoff
             public float safetyValveThreshold = 14f;
             [Draw("Coal combustion rate")]
             public float combustionRate = 1.5f;
+            [Draw("Safety valve vent rate")]
+            public float safetyValveVentRate = 2f;
+            // [Draw("Safety valve feathering")]
+            public float safetyValveFeathering = 0.15f;
+            // [Draw("Safety valve smoothing")]
+            public float safetyValveSmoothing = 2f;
 
             [Draw("Airflow for min smoke")]
             public float minSmokeOxygenSupply = 0f;

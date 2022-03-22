@@ -25,6 +25,8 @@ namespace DvMod.SteamCutoff
         public float WaterTemp { get; private set; } // deg C
         public float SmoothedEvapRate { get; private set; } // kg/s
         private float smoothedEvapRateVel;
+        public int numSafetyValvesOpen;
+        public float safetyValveRateVel;
 
         private BoilerSimulation(SteamLocoSimulation sim)
         {

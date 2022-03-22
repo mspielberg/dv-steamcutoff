@@ -153,6 +153,57 @@ namespace DvMod.SteamCutoff
         private static class SimulateSteamPatch
         {
             private const float PASSIVE_LEAK_ADJUST = 0.1f;
+            private const float SafetyValveBlowoff = 0.35f; // 5 psi
+            private const float SafetyValveOffset = 0.15f;
+
+            private static void SimulateSafetyValve(SteamLocoSimulation __instance, BoilerSimulation boilerSim, float deltaTime)
+            {
+                var closeThreshold = settings.safetyValveThreshold - SafetyValveBlowoff;
+                var secondaryThreshold = settings.safetyValveThreshold + SafetyValveOffset;
+                var secondaryCloseThreshold = secondaryThreshold - SafetyValveBlowoff;
+
+                var pressure = __instance.boilerPressure.value;
+                boilerSim.numSafetyValvesOpen = boilerSim.numSafetyValvesOpen switch
+                {
+                    0 => pressure > settings.safetyValveThreshold ? 1 : boilerSim.numSafetyValvesOpen,
+                    1 => pressure > secondaryThreshold ? 2 : pressure < closeThreshold ? 0 : boilerSim.numSafetyValvesOpen,
+                    2 => pressure < secondaryCloseThreshold ? 1 : boilerSim.numSafetyValvesOpen,
+                    _ => throw new NotImplementedException(),
+                };
+
+                var targetVentRate = boilerSim.numSafetyValvesOpen switch
+                {
+                    0 => Mathf.Lerp(0, 0.1f,
+                            Mathf.InverseLerp(
+                                settings.safetyValveThreshold - settings.safetyValveFeathering,
+                                settings.safetyValveThreshold,
+                                pressure)),
+                    1 => Mathf.Lerp(0.5f, 0.6f,
+                            Mathf.InverseLerp(
+                                secondaryThreshold - settings.safetyValveFeathering,
+                                secondaryThreshold,
+                                pressure)),
+                    2 => 1,
+                    _ => throw new NotImplementedException(),
+                };
+
+                var normalizedRate =
+                    Mathf.SmoothDamp(
+                        __instance.safetyPressureValve.value,
+                        targetVentRate,
+                        ref boilerSim.safetyValveRateVel,
+                        targetVentRate >= __instance.safetyPressureValve.value ? 0 : settings.safetyValveSmoothing);
+                if (normalizedRate < 0.01f)
+                    normalizedRate = 0f;
+                __instance.safetyPressureValve.SetNextValue(normalizedRate);
+
+                if (__instance.safetyPressureValve.value > 0)
+                {
+                    __instance.boilerPressure.AddNextValue(
+                        -Mathf.Lerp(0, settings.safetyValveVentRate, __instance.safetyPressureValve.value)
+                        * deltaTime);
+                }
+            }
 
             public static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
             {
@@ -183,20 +234,7 @@ namespace DvMod.SteamCutoff
                 if (__instance.steamReleaser.value > 0.0f && __instance.boilerPressure.value > 0.0f)
                     __instance.boilerPressure.AddNextValue(-__instance.steamReleaser.value * 30.0f * deltaTime);
 
-                // safety valve
-                const float SAFETY_VALVE_BLOWOFF = 0.2f; // 3 psi
-                var safetyValveCloseThreshold = settings.safetyValveThreshold - SAFETY_VALVE_BLOWOFF;
-                if (__instance.boilerPressure.value >= settings.safetyValveThreshold && __instance.safetyPressureValve.value == 0f)
-                    __instance.safetyPressureValve.SetNextValue(1f);
-                else if (__instance.boilerPressure.value <= safetyValveCloseThreshold && __instance.safetyPressureValve.value == 1f)
-                    __instance.safetyPressureValve.SetNextValue(0f);
-
-                if ( __instance.safetyPressureValve.value == 1f)
-                {
-                    __instance.boilerPressure.AddNextValue(-2f * __instance.boilerPressure.value * deltaTime);
-                    if (__instance.boilerPressure.nextValue < safetyValveCloseThreshold)
-                        __instance.boilerPressure.SetNextValue(safetyValveCloseThreshold);
-                }
+                SimulateSafetyValve(__instance, boilerSim, deltaTime);
 
                 // passive leakage
                 __instance.pressureLeakMultiplier = Mathf.Lerp(
