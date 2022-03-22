@@ -35,6 +35,17 @@ namespace DvMod.SteamCutoff
             // [Draw("Safety valve particle min size speed")]
             // public float safetyValveParticleMaxSizeSpeed = 1f;
 
+            [Draw("Front-end (exhaust) efficiency")]
+            public float frontendEfficiency = 1.9f;
+            [Draw("Coal combustion rate")]
+            public float combustionRate = 3.0f;
+            [Draw("Boiler thermal efficiency")]
+            public float boilerThermalEfficiency = 0.55f;
+            [Draw("Steam consumption multiplier")]
+            public float steamConsumptionMultiplier = 1.0f;
+            [Draw("Torque multiplier")]
+            public float torqueMultiplier = 1.0f;
+
             [Draw("Airflow for min smoke")]
             public float minSmokeOxygenSupply = 0f;
             [Draw("Airflow for max smoke")]
@@ -49,15 +60,6 @@ namespace DvMod.SteamCutoff
             public float maxSmokeLifetime = 10f;
             [Draw("Clean smoke opacity", Min = 0f, Max = 1f)]
             public float cleanSmokeOpacity = 0.1f;
-
-            [Draw("Coal combustion rate")]
-            public float combustionRate = 3.0f;
-            [Draw("Boiler thermal efficiency")]
-            public float boilerThermalEfficiency = 0.55f;
-            [Draw("Steam consumption multiplier")]
-            public float steamConsumptionMultiplier = 1.0f;
-            [Draw("Torque multiplier")]
-            public float torqueMultiplier = 1.0f;
 
             // [Draw("Enable detailed low-speed simulation")]
             public bool enableLowSpeedSimulation = true;
