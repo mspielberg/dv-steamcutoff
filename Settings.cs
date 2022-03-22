@@ -18,6 +18,23 @@ namespace DvMod.SteamCutoff
             // [Draw("Safety valve smoothing")]
             public float safetyValveSmoothing = 2f;
 
+            // [Draw("Safety valve particle gravity")]
+            public float safetyValveParticleGravity = 0.1f;
+            // [Draw("Safety valve particle lifetime")]
+            public float safetyValveParticleLifetime = 7f;
+            // [Draw("Safety valve particle rate")]
+            public float safetyValveParticleRate = 500f;
+            // [Draw("Safety valve particle speed")]
+            public float safetyValveParticleSpeed = 5f;
+            // [Draw("Safety valve particle min size")]
+            // public float safetyValveParticleMinSize = 1f;
+            // [Draw("Safety valve particle max size")]
+            // public float safetyValveParticleMaxSize = 1f;
+            // [Draw("Safety valve particle min size speed")]
+            // public float safetyValveParticleMinSizeSpeed = 1f;
+            // [Draw("Safety valve particle min size speed")]
+            // public float safetyValveParticleMaxSizeSpeed = 1f;
+
             [Draw("Airflow for min smoke")]
             public float minSmokeOxygenSupply = 0f;
             [Draw("Airflow for max smoke")]
