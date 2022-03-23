@@ -95,7 +95,7 @@ namespace DvMod.SteamCutoff
                 smoothedHeatYieldRate,
                 fireOn ? InstantaneousHeatYieldRate() : 0f,
                 ref smoothedHeatYieldRateVel,
-                smoothTime: 1f);
+                smoothTime: Constants.HeatYieldTransitionTime);
         }
 
         private float InstantaneousHeatYieldRate()

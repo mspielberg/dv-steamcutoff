@@ -4,7 +4,8 @@ namespace DvMod.SteamCutoff
     {
         public const float CoalboxCapacity = 400f;
 
-        public const float TemperatureGaugeMaxPower = 15e3f;
+        public const float HeatYieldTransitionTime = 10f;
+        public const float TemperatureGaugeMaxPower = 20e3f;
         public const float TemperatureGaugeGamma = 0.4f;
 
         public const float FeedwaterTemp = 15f; // deg C
