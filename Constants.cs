@@ -11,7 +11,7 @@ namespace DvMod.SteamCutoff
 
         public const float CutoffGamma = 1.9f;
         public const float MinCutoff = 0.06f;
-        public const float MaxCutoff = 0.85f;
+        public const float MaxCutoff = 0.9f;
 
         public const float InjectorGamma = 4f;
     }
