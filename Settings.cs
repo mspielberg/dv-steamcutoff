@@ -12,7 +12,7 @@ namespace DvMod.SteamCutoff
             [Draw("Max boiler pressure", Min = 0f, Max = 20f)]
             public float safetyValveThreshold = 14f;
             [Draw("Safety valve vent rate")]
-            public float safetyValveVentRate = 2f;
+            public float safetyValveVentRate = 5f;
             // [Draw("Safety valve feathering")]
             public float safetyValveFeathering = 0.15f;
             // [Draw("Safety valve smoothing")]
