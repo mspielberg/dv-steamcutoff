@@ -59,7 +59,7 @@ namespace DvMod.SteamCutoff
             [Draw("Max smoke lifetime")]
             public float maxSmokeLifetime = 10f;
             [Draw("Clean smoke opacity", Min = 0f, Max = 1f)]
-            public float cleanSmokeOpacity = 0.1f;
+            public float cleanSmokeOpacity = 0.02f;
 
             // [Draw("Enable detailed low-speed simulation")]
             public bool enableLowSpeedSimulation = true;
