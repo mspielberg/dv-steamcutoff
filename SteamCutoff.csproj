@@ -4,7 +4,7 @@
     <LangVersion>8.0</LangVersion>
     <Nullable>enable</Nullable>
     <RootNamespace>DvMod.SteamCutoff</RootNamespace>
-    <InformationalVersion>0.9.8</InformationalVersion>
+    <InformationalVersion>0.9.9</InformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>
