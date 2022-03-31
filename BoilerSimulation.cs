@@ -46,6 +46,8 @@ namespace DvMod.SteamCutoff
             float currentSteamMass = IdealGasSteam.Mass(boilerPressure, WaterTemp, BoilerSteamVolume(boilerWaterAmount));
 
             float newWaterMass = currentWaterMass + waterAdded;
+            if (newWaterMass <= 0)
+                return;
             WaterTemp = ((currentWaterMass * WaterTemp) + (waterAdded * Constants.FeedwaterTemp)) / newWaterMass;
             currentWaterMass = newWaterMass;
 
