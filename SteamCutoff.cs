@@ -192,14 +192,14 @@ namespace DvMod.SteamCutoff
 
                 var targetVentRate = boilerSim.numSafetyValvesOpen switch
                 {
-                    0 => Mathf.Lerp(0, 0.1f,
+                    0 => Mathf.Lerp(0, settings.safetyValveFeatheringAmount,
                             Mathf.InverseLerp(
-                                settings.safetyValveThreshold - settings.safetyValveFeathering,
+                                settings.safetyValveThreshold - settings.safetyValveFeatheringPressure,
                                 settings.safetyValveThreshold,
                                 pressure)),
-                    1 => Mathf.Lerp(0.5f, 0.6f,
+                    1 => Mathf.Lerp(0.5f, 0.5f + settings.safetyValveFeatheringAmount,
                             Mathf.InverseLerp(
-                                secondaryThreshold - settings.safetyValveFeathering,
+                                secondaryThreshold - settings.safetyValveFeatheringPressure,
                                 secondaryThreshold,
                                 pressure)),
                     2 => 1,

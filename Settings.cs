@@ -1,5 +1,4 @@
 using UnityModManagerNet;
-using UnityEngine;
 
 namespace DvMod.SteamCutoff
 {
@@ -14,11 +13,13 @@ namespace DvMod.SteamCutoff
             [Draw("Max boiler pressure", Min = 0f, Max = 20f)]
             public float safetyValveThreshold = 14f;
             [Draw("Safety valve vent rate")]
-            public float safetyValveVentRate = 5f;
-            // [Draw("Safety valve feathering")]
-            public float safetyValveFeathering = 0.15f;
+            public float safetyValveVentRate = 250f;
+            // [Draw("Safety valve feathering pressure range")]
+            public float safetyValveFeatheringPressure = 0.15f;
+            // [Draw("Safety valve feathering amount")]
+            public float safetyValveFeatheringAmount = 0.05f;
             // [Draw("Safety valve smoothing")]
-            public float safetyValveSmoothing = 2f;
+            public float safetyValveSmoothing = 1f;
 
             // [Draw("Safety valve particle gravity")]
             public float safetyValveParticleGravity = 0.1f;
