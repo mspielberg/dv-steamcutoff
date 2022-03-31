@@ -200,8 +200,9 @@ namespace DvMod.SteamCutoff
                 if (__instance.safetyPressureValve.value > 0)
                 {
                     __instance.boilerPressure.AddNextValue(
-                        -Mathf.Lerp(0, settings.safetyValveVentRate, __instance.safetyPressureValve.value)
-                        * deltaTime);
+                        -normalizedRate * settings.safetyValveVentRate * (deltaTime / __instance.timeMult) /
+                        SteamTables.SteamDensity(__instance.boilerPressure.value) /
+                        BoilerSteamVolume(__instance.boilerWater.value));
                 }
             }
 
