@@ -17,7 +17,26 @@ namespace DvMod.SteamCutoff
         {
             mod = modEntry;
 
-            try { settings = Settings.Load<Settings>(modEntry); } catch {}
+            try
+            {
+                var loaded = Settings.Load<Settings>(modEntry);
+                if (loaded?.version == modEntry.Info.Version)
+                {
+                    settings = loaded;
+                    modEntry.Logger.Log("Loading settings.");
+                }
+                else
+                {
+                    modEntry.Logger.Log("Reset settings to default after upgrade.");
+                    settings.version = modEntry.Info.Version;
+                }
+            }
+            catch
+            {
+                modEntry.Logger.Log("Could not read settings. Reset settings to default.");
+                settings.version = modEntry.Info.Version;
+            }
+
             var harmony = new Harmony(modEntry.Info.Id);
             harmony.PatchAll();
 

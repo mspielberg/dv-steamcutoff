@@ -5,6 +5,8 @@ namespace DvMod.SteamCutoff
 {
         public class Settings : UnityModManager.ModSettings, IDrawable
         {
+            public string? version;
+
             [Draw("Enable sight glass float")]
             public bool enableBallFloat = true;
             [Draw("Initial boiler pressure", Min = 0f, Max = 20f)]
