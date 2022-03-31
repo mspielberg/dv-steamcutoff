@@ -23,6 +23,7 @@ namespace DvMod.SteamCutoff
             yield return waitTimeout;
             var sim = __instance.loco.sim;
             var state = FireState.Instance(sim);
+            var settings = Main.settings.smoke;
             while (true)
             {
                 yield return waitTimeout;
@@ -36,17 +37,17 @@ namespace DvMod.SteamCutoff
                 if (!__instance.chimneyParticles.isPlaying)
                     __instance.chimneyParticles.Play();
 
-                float volume = Mathf.InverseLerp(Main.settings.minSmokeOxygenSupply, Main.settings.maxSmokeOxygenSupply, state.oxygenSupply);
-                var rate = Mathf.Lerp(Main.settings.minSmokeRate, Main.settings.maxSmokeRate, volume);
-                var lifetime = Mathf.Lerp(Main.settings.minSmokeLifetime, Main.settings.maxSmokeLifetime, volume);
+                float volume = Mathf.InverseLerp(settings.minSmokeOxygenSupply, settings.maxSmokeOxygenSupply, state.oxygenSupply);
+                var rate = Mathf.Lerp(settings.minSmokeRate, settings.maxSmokeRate, volume);
+                var lifetime = Mathf.Lerp(settings.minSmokeLifetime, settings.maxSmokeLifetime, volume);
 
-                var cleanSmoke = new Color(1f, 1f, 1f, Main.settings.cleanSmokeOpacity);
+                var cleanSmoke = new Color(1f, 1f, 1f, settings.cleanSmokeOpacity);
                 var color = Color.Lerp(Color.black, cleanSmoke, state.oxygenAvailability);
 
                 var main = __instance.chimneyParticles.main;
                 main.startColor = color;
                 main.startLifetime = lifetime;
-                main.maxParticles = (int)(Main.settings.maxSmokeLifetime * Main.settings.maxSmokeRate) * 10;
+                main.maxParticles = (int)(settings.maxSmokeLifetime * settings.maxSmokeRate) * 10;
                 var emission = __instance.chimneyParticles.emission;
                 emission.rateOverTime = rate;
                 Main.DebugLog(TrainCar.Resolve(__instance.gameObject), () => $"volume={volume},color={color},rate={rate},lifetime={lifetime}");

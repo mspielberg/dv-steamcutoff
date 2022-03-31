@@ -49,6 +49,27 @@ namespace DvMod.SteamCutoff
             [Draw("Torque multiplier")]
             public float torqueMultiplier = 1.0f;
 
+            // [Draw("Enable detailed low-speed simulation")]
+            public bool enableLowSpeedSimulation = true;
+
+            [Draw("Smoke settings", Box = true, Collapsible = true)]
+            public SmokeSettings smoke = new SmokeSettings();
+
+            [Draw("Enable logging")]
+            public bool enableLogging = false;
+
+            override public void Save(UnityModManager.ModEntry entry)
+            {
+                Save(this, entry);
+            }
+
+            public void OnChange()
+            {
+            }
+        }
+
+        public class SmokeSettings : UnityModManager.ModSettings, IDrawable
+        {
             [Draw("Airflow for min smoke")]
             public float minSmokeOxygenSupply = 0f;
             [Draw("Airflow for max smoke")]
@@ -64,16 +85,8 @@ namespace DvMod.SteamCutoff
             [Draw("Clean smoke opacity", Min = 0f, Max = 1f)]
             public float cleanSmokeOpacity = 0.02f;
 
-            // [Draw("Enable detailed low-speed simulation")]
-            public bool enableLowSpeedSimulation = true;
-
-            [Draw("Enable logging")]
-            public bool enableLogging = false;
-
-            override public void Save(UnityModManager.ModEntry entry) {
-                Save(this, entry);
+            public void OnChange()
+            {
             }
-
-            public void OnChange() {}
         }
 }
