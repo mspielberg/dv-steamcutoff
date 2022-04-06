@@ -53,7 +53,7 @@ namespace DvMod.SteamCutoff
         public float smoothedHeatYieldRate;
         private float smoothedHeatYieldRateVel;
 
-        private static readonly float ChunkRadius = Mathf.Pow(CoalChunkMass / PiecesPerChunk / CoalDensity / (4f/3f) / Mathf.PI, 1f/3f);
+        private static readonly float ChunkRadius = Mathf.Pow(CoalChunkMass / PiecesPerChunk / CoalDensity / (4f / 3f) / Mathf.PI, 1f / 3f);
         private static readonly float ChunkTotalSurfaceArea = PiecesPerChunk * Mathf.Pow(ChunkRadius, 2) * 4 * Mathf.PI;
 
         /// <summary>Coal surface area in m^2.</summary>

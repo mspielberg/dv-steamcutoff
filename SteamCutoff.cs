@@ -286,7 +286,7 @@ namespace DvMod.SteamCutoff
 
                 var chuff = __instance.GetComponent<ChuffController>();
                 float cylinderSteamTemp = Mathf.Max(__instance.temperature.value, SteamTables.BoilingPoint(__instance));
-                float powerRatio = CylinderSimulation.PowerRatio(settings.enableLowSpeedSimulation, regulator, cutoff, __instance.speed.value, 
+                float powerRatio = CylinderSimulation.PowerRatio(settings.enableLowSpeedSimulation, regulator, cutoff, __instance.speed.value,
                     chuff.dbgCurrentRevolution, cylinderSteamTemp, __instance);
                 __instance.power.SetNextValue(
                     Main.settings.torqueMultiplier
@@ -303,7 +303,7 @@ namespace DvMod.SteamCutoff
                     Main.settings.steamConsumptionMultiplier
                     * 0.7f * CylinderSimulation.CylinderSteamMassFlow(__instance)
                     * (deltaTime / __instance.timeMult);
-                float pressureConsumed =  __instance.boilerPressure.value * steamMassConsumed / boilerSteamMass;
+                float pressureConsumed = __instance.boilerPressure.value * steamMassConsumed / boilerSteamMass;
                 __instance.boilerPressure.AddNextValue(-pressureConsumed);
                 HeadsUpDisplayBridge.instance?.UpdateSteamUsage(loco, steamMassConsumed / (deltaTime / __instance.timeMult));
 

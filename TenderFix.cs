@@ -21,7 +21,8 @@ namespace DvMod.SteamCutoff
             coupler.KillJointCoroutines();
             var cj = coupler.springyCJ;
             cj.breakForce = float.PositiveInfinity;
-            cj.linearLimitSpring = new SoftJointLimitSpring {
+            cj.linearLimitSpring = new SoftJointLimitSpring
+            {
                 spring = 2e7f,
                 damper = 0f,
             };

@@ -100,7 +100,8 @@ namespace DvMod.SteamCutoff
 
                 RegisterFloatPull(
                     "Cutoff",
-                    car => {
+                    car =>
+                    {
                         var sim = car.GetComponent<SteamLocoSimulation>();
                         if (sim != null)
                             return CylinderSimulation.Cutoff(sim);
