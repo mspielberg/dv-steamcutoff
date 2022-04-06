@@ -1,8 +1,8 @@
+using QuantitiesNet;
+using static QuantitiesNet.Dimensions;
+using static QuantitiesNet.Units;
 using System;
 using UnityModManagerNet;
-using Formatter = System.Func<float, string>;
-using Provider = System.Func<TrainCar, float?>;
-using Pusher = System.Action<TrainCar, float>;
 
 namespace DvMod.SteamCutoff
 {
@@ -15,9 +15,13 @@ namespace DvMod.SteamCutoff
             try
             {
                 var hudMod = UnityModManager.FindMod("HeadsUpDisplay");
-                if (hudMod?.Loaded != true)
+                if (hudMod == null)
                     return;
-                instance = new HeadsUpDisplayBridge(hudMod);
+                if (!hudMod.Loaded)
+                    return;
+                if (hudMod.Version.Major < 1)
+                    return;
+                instance = new HeadsUpDisplayBridge();
             }
             catch (System.IO.FileNotFoundException)
             {
@@ -25,58 +29,45 @@ namespace DvMod.SteamCutoff
         }
 
         // fire
-        private readonly Pusher? exhaustFlowPusher;
-        private readonly Pusher? oxygenSupplyPusher;
-        private readonly Pusher? stokerFeedRatePusher;
+        private readonly Action<TrainCar, Quantity<MassFlow>> exhaustFlowPusher;
+        private readonly Action<TrainCar, Quantity<MassFlow>> oxygenSupplyPusher;
+        private readonly Action<TrainCar, Quantity<MassFlow>> stokerFeedRatePusher;
 
         // boiler
-        private readonly Pusher? boilerSteamMassPusher;
+        private readonly Action<TrainCar, Quantity<Mass>> boilerSteamMassPusher;
 
         // cylinder
-        private readonly Pusher? steamConsumptionPusher;
+        private readonly Action<TrainCar, Quantity<MassFlow>> steamConsumptionPusher;
 
-        private static readonly Type[] RegisterPullArgumentTypes = new Type[]
+        private HeadsUpDisplayBridge()
         {
-            typeof(string),
-            typeof(Provider),
-            typeof(Formatter),
-            typeof(IComparable)
-        };
-
-        private static readonly Type[] RegisterPushArgumentTypes = new Type[]
-        {
-            typeof(string),
-            typeof(Formatter),
-            typeof(IComparable)
-        };
-
-        private static readonly Type[] GetPusherArgumentTypes = new Type[]
-        {
-            typeof(string)
-        };
-
-        private HeadsUpDisplayBridge(UnityModManager.ModEntry hudMod)
-        {
-            void RegisterPull(string label, Provider provider, Formatter formatter, IComparable? order = null)
+            void RegisterFloatPull(
+                string label,
+                Func<TrainCar, float?> provider,
+                Func<float, string> formatter,
+                IComparable? order = null,
+                bool hidden = false)
             {
-                hudMod.Invoke(
-                    "DvMod.HeadsUpDisplay.Registry.RegisterPull",
-                    out var _,
-                    new object?[] { label, provider, formatter, order },
-                    RegisterPullArgumentTypes);
+                DvMod.HeadsUpDisplay.Registry.RegisterPull(label, provider, formatter, order ?? label, hidden);
+            }
+            
+            void RegisterPull<D>(
+                string label,
+                Func<TrainCar, Quantity<D>?> provider,
+                IComparable? order = null,
+                bool hidden = false)
+            where D : IDimension, new()
+            {
+                DvMod.HeadsUpDisplay.Registry.RegisterPull(label, provider, order ?? label, hidden);
             }
 
-            void RegisterPush(out Pusher pusher, string label, Formatter formatter, IComparable? order = null)
+            void RegisterPush<D>(out Action<TrainCar, Quantity<D>> pusher, string label, IComparable? order = null, bool hidden = false)
+            where D : IDimension, new()
             {
-                hudMod.Invoke(
-                    "DvMod.HeadsUpDisplay.Registry.RegisterPush",
-                    out var temp,
-                    new object?[] { label, formatter, order },
-                    RegisterPushArgumentTypes);
-                pusher = (Pusher)temp;
+                pusher = DvMod.HeadsUpDisplay.Registry.RegisterPush<D>(label, order ?? label, hidden);
             }
 
-            RegisterPull(
+            RegisterFloatPull(
                 "Cutoff",
                 car => {
                     var sim = car.GetComponent<SteamLocoSimulation>();
@@ -86,73 +77,93 @@ namespace DvMod.SteamCutoff
                 },
                 v => $"{v:P0}");
 
-            RegisterPull(
+            RegisterPull<QuantitiesNet.Dimensions.Volume>(
                 "Boiler water level",
-                car => car.GetComponent<SteamLocoSimulation>()?.boilerWater?.value,
-                v => $"{v:F0} L");
+                car =>
+                {
+                    var sim = car.GetComponent<SteamLocoSimulation>();
+                    if (sim == null)
+                        return null;
+                    return new Quantities.Volume(sim.boilerWater.value, Liter);
+                });
 
             RegisterPush(
                 out exhaustFlowPusher,
-                "Exhaust flow",
-                v => $"{v * 3600:F0} kg/h");
+                "Exhaust flow");
 
-            RegisterPush(
-                out oxygenSupplyPusher,
-                "Oxygen supply",
-                v => $"{v * 3600:F0} kg/h");
+            RegisterPush(out oxygenSupplyPusher, "Oxygen supply");
 
-            RegisterPull(
+            RegisterFloatPull(
                 "Oxygen availability",
                 car => FireState.Instance(car)?.oxygenAvailability,
                 v => $"{v:P0}");
 
             RegisterPull(
-                "Coalbox",
-                car => car.GetComponent<SteamLocoSimulation>()?.coalbox?.value,
-                v => $"{v:F1} kg");
+                "Firebox",
+                car =>
+                {
+                    var sim = car.GetComponent<SteamLocoSimulation>();
+                    if (sim == null)
+                        return null;
+                    return new Quantities.Mass(sim.coalbox.value, Kilogram);
+                });
 
-            RegisterPush(
-                out stokerFeedRatePusher,
-                "Stoker feed rate",
-                v => $"{v * 3600:F0} kg/h");
+            RegisterPush(out stokerFeedRatePusher, "Stoker feed rate");
 
             RegisterPull(
                 "Coal use",
-                car => car.GetComponent<SteamLocoSimulation>()?.coalConsumptionRate,
-                v => $"{v * 3600:F0} kg/h");
+                car =>
+                {
+                    var sim = car.GetComponent<SteamLocoSimulation>();
+                    if (sim == null)
+                        return null;
+                    return new Quantities.MassFlow(sim.coalConsumptionRate, Kilogram / Second);
+                });
 
             RegisterPull(
                 "Heat yield",
-                car => FireState.Instance(car)?.smoothedHeatYieldRate,
-                v => $"{v:F0} kW");
+                car =>
+                {
+                    var state = FireState.Instance(car);
+                    if (state == null)
+                        return null;
+                    return new Quantities.Power(state.smoothedHeatYieldRate, Kilowatt);
+                });
 
-            RegisterPush(
-                out boilerSteamMassPusher,
-                "Boiler steam mass",
-                v => $"{v:F1} kg");
+            RegisterPush(out boilerSteamMassPusher, "Boiler steam mass");
 
             RegisterPull(
                 "Water temperature",
-                car => BoilerSimulation.Instance(car)?.WaterTemp,
-                v => $"{v:F1} C");
+                car =>
+                {
+                    var sim = BoilerSimulation.Instance(car);
+                    if (sim == null)
+                        return null;
+                    return new Quantities.Temperature(sim.WaterTemp, Celsius);
+                });
 
             RegisterPull(
                 "Evaporation",
-                car => BoilerSimulation.Instance(car)?.SmoothedEvapRate,
-                v => $"{v * 3600:F0} kg/h");
+                car =>
+                {
+                    var sim = BoilerSimulation.Instance(car);
+                    if (sim == null)
+                        return null;
+                    return new Quantities.MassFlow(sim.SmoothedEvapRate);
+                });
 
-            RegisterPush(
-                out steamConsumptionPusher,
-                "Cylinder steam use",
-                 v => $"{v * 3600:F0} kg/h");
+            RegisterPush(out steamConsumptionPusher, "Cylinder steam use");
         }
 
-        public void UpdateExhaustFlow(TrainCar car, float exhaustFlow) => exhaustFlowPusher?.Invoke(car, exhaustFlow);
-        public void UpdateOxygenSupply(TrainCar car, float oxygenSupply) => oxygenSupplyPusher?.Invoke(car, oxygenSupply);
-        public void UpdateStokerFeedRate(TrainCar car, float stokerFeedRate) => stokerFeedRatePusher?.Invoke(car, stokerFeedRate);
-
-        public void UpdateBoilerSteamMass(TrainCar car, float steamMass) => boilerSteamMassPusher?.Invoke(car, steamMass);
-
-        public void UpdateSteamUsage(TrainCar car, float steamKgPerS) => steamConsumptionPusher?.Invoke(car, steamKgPerS);
+        public void UpdateExhaustFlow(TrainCar car, float exhaustFlow) =>
+            exhaustFlowPusher(car, new Quantities.MassFlow(exhaustFlow, Kilogram / Second));
+        public void UpdateOxygenSupply(TrainCar car, float oxygenSupply) =>
+            oxygenSupplyPusher(car, new Quantities.MassFlow(oxygenSupply, Kilogram / Second));
+        public void UpdateStokerFeedRate(TrainCar car, float stokerFeedRate) =>
+            stokerFeedRatePusher(car, new Quantities.MassFlow(stokerFeedRate, Kilogram / Second));
+        public void UpdateBoilerSteamMass(TrainCar car, float steamMass) =>
+            boilerSteamMassPusher(car, new Quantities.Mass(steamMass, Kilogram));
+        public void UpdateSteamUsage(TrainCar car, float steamKgPerS) =>
+            steamConsumptionPusher(car, new Quantities.MassFlow(steamKgPerS, Kilogram / Second));
     }
 }

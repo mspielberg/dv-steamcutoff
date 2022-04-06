@@ -17,16 +17,21 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="0Harmony"/>
-    <Reference Include="Assembly-CSharp"/>
-    <Reference Include="DV.Utils"/>
-    <Reference Include="NAudio"/>
-    <Reference Include="UnityEngine.AnimationModule"/>
-    <Reference Include="UnityEngine.AudioModule"/>
-    <Reference Include="UnityEngine.CoreModule"/>
-    <Reference Include="UnityEngine.IMGUIModule"/>
-    <Reference Include="UnityEngine.ParticleSystemModule"/>
-    <Reference Include="UnityEngine.PhysicsModule"/>
-    <Reference Include="UnityModManager"/>
+    <Reference Include="0Harmony" />
+    <Reference Include="Assembly-CSharp" />
+    <Reference Include="DV.Utils" />
+    <Reference Include="NAudio" />
+    <Reference Include="UnityEngine.AnimationModule" />
+    <Reference Include="UnityEngine.AudioModule" />
+    <Reference Include="UnityEngine.CoreModule" />
+    <Reference Include="UnityEngine.IMGUIModule" />
+    <Reference Include="UnityEngine.ParticleSystemModule" />
+    <Reference Include="UnityEngine.PhysicsModule" />
+    <Reference Include="UnityModManager" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\dv-hud\HeadsUpDisplay.csproj" />
+    <ProjectReference Include="..\..\QuantitiesNet\QuantitiesNet\QuantitiesNet.csproj" />
   </ItemGroup>
 </Project>
