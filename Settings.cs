@@ -84,6 +84,8 @@ namespace DvMod.SteamCutoff
         public float maxSmokeLifetime = 10f;
         [Draw("Clean smoke opacity", Min = 0f, Max = 1f)]
         public float cleanSmokeOpacity = 0.02f;
+        [Draw("Color change smoothing", Min = 0f)]
+        public float colorChangeSmoothing = 2f;
 
         public void OnChange()
         {

@@ -50,6 +50,8 @@ namespace DvMod.SteamCutoff
         public float oxygenSupply;
         /// <summary>Current oxygen supply as a fraction of oxygen demand.</summary>
         public float oxygenAvailability;
+        public float smoothedOxygenAvailability;
+        public float smoothedOxygenAvailabilityVel;
         public float smoothedHeatYieldRate;
         private float smoothedHeatYieldRateVel;
 
@@ -77,6 +79,11 @@ namespace DvMod.SteamCutoff
         {
             oxygenSupply = (PassiveStackFlow + (exhaustFlow * Main.settings.frontendEfficiency)) * OxygenRatio * damper;
             oxygenAvailability = Mathf.Clamp01(oxygenSupply / MaxOxygenConsumptionRate());
+            smoothedOxygenAvailability = Mathf.SmoothDamp(
+                smoothedOxygenAvailability,
+                oxygenAvailability,
+                ref smoothedOxygenAvailabilityVel,
+                smoothTime: Main.settings.smoke.colorChangeSmoothing);
             return oxygenSupply;
         }
 

@@ -42,7 +42,7 @@ namespace DvMod.SteamCutoff
                 var lifetime = Mathf.Lerp(settings.minSmokeLifetime, settings.maxSmokeLifetime, volume);
 
                 var cleanSmoke = new Color(1f, 1f, 1f, settings.cleanSmokeOpacity);
-                var color = Color.Lerp(Color.black, cleanSmoke, state.oxygenAvailability);
+                var color = Color.Lerp(Color.black, cleanSmoke, state.smoothedOxygenAvailability);
 
                 var main = __instance.chimneyParticles.main;
                 main.startColor = color;
