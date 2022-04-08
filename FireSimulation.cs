@@ -30,7 +30,7 @@ namespace DvMod.SteamCutoff
 
         private const float CarbonAtomicWeight = 12.011f;
         private const float OxygenAtomicWeight = 15.999f;
-        private const float ExcessOxygenFactor = 1.75f; // needed beyond stoichiometric to ensure full combustion
+        private const float ExcessOxygenFactor = 1.2f; // needed beyond stoichiometric to ensure full combustion
         private const float OxygenMassFactor = 2f * OxygenAtomicWeight / CarbonAtomicWeight * ExcessOxygenFactor;
         private const float CoalDensity = 1346f; // kg/m^3
 
