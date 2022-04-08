@@ -43,7 +43,7 @@ namespace DvMod.SteamCutoff
         [Draw("Coal combustion rate")]
         public float combustionRate = 3.0f;
         [Draw("Boiler thermal efficiency")]
-        public float boilerThermalEfficiency = 0.5f;
+        public float boilerThermalEfficiency = 1.0f;
         [Draw("Steam consumption multiplier")]
         public float steamConsumptionMultiplier = 1.0f;
         [Draw("Torque multiplier")]
