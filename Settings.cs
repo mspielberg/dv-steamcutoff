@@ -39,7 +39,7 @@ namespace DvMod.SteamCutoff
         // public float safetyValveParticleMaxSizeSpeed = 1f;
 
         [Draw("Front-end (exhaust) efficiency")]
-        public float frontendEfficiency = 1.9f;
+        public float frontendEfficiency = 1.65f;
         [Draw("Coal combustion rate")]
         public float combustionRate = 3.0f;
         [Draw("Boiler thermal efficiency")]
