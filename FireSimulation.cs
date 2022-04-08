@@ -43,7 +43,7 @@ namespace DvMod.SteamCutoff
         private const float MaxConsumptionRate = 0.013f;
         private float MaxConsumptionRatePerArea() => MaxConsumptionRate * Main.settings.combustionRate;
 
-        public const float CoalChunkMass = 10f; // kg
+        public const float CoalChunkMass = 7f; // kg
         private const float PiecesPerChunk = CoalChunkMass / CoalPieceMass;
 
         /// <summary>Current oxygen supply as kg/s.</summary>
