@@ -130,6 +130,11 @@ namespace DvMod.SteamCutoff
 
                 RegisterPull("Coal use", FromSim(sim => sim.coalConsumptionRate * KilogramsPerSecond));
 
+                RegisterFloatPull(
+                    "Combustion efficiency",
+                    car => FireState.Instance(car)?.CombustionEfficiency(),
+                    v => $"{v:P0}");
+
                 RegisterPull(
                     "Heat yield",
                     FromComponent(FireState.Instance, state => state.smoothedHeatYieldRate * Kilowatt));
