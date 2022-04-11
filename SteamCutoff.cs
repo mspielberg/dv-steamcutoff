@@ -290,7 +290,7 @@ namespace DvMod.SteamCutoff
 
                 var chuff = __instance.GetComponent<ChuffController>();
                 float cylinderSteamTemp = Mathf.Max(__instance.temperature.value, SteamTables.BoilingPoint(__instance));
-                float powerRatio = CylinderSimulation.PowerRatio(settings.enableLowSpeedSimulation, regulator, cutoff, __instance.speed.value,
+                float powerRatio = CylinderSimulation.PowerRatio(regulator, cutoff, __instance.speed.value,
                     chuff.dbgCurrentRevolution, cylinderSteamTemp, __instance);
                 __instance.power.SetNextValue(
                     Main.settings.torqueMultiplier

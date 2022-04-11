@@ -50,9 +50,6 @@ namespace DvMod.SteamCutoff
         [Draw("Water consumption multiplier")]
         public float waterConsumptionMultiplier = 1.0f;
 
-        // [Draw("Enable detailed low-speed simulation")]
-        public bool enableLowSpeedSimulation = true;
-
         [Draw("Smoke settings", Box = true, Collapsible = true)]
         public SmokeSettings smoke = new SmokeSettings();
 

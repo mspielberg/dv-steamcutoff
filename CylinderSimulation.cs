@@ -88,14 +88,11 @@ namespace DvMod.SteamCutoff
             return cutoff * ((expansionRatio - 1) * meanExpansionPower + 1f);
         }
 
-        public static float PowerRatio(bool enableLowSpeedSimulation, float regulator, float cutoff, float speed, float revolution,
+        public static float PowerRatio(float regulator, float cutoff, float speed, float revolution,
             float cylinderSteamTemp, SteamLocoSimulation instance)
         {
             float condensationExpansionRatio = Mathf.Pow((cylinderSteamTemp + 273.15f) / MinSteamTemperature_K,
                     1f / (SteamAdaiabaticIndex - 1f));
-
-            if (!enableLowSpeedSimulation)
-                return AveragePowerRatio(cutoff, condensationExpansionRatio);
 
             return Mathf.Lerp(
                 InstantaneousPowerRatio(regulator, cutoff, revolution, condensationExpansionRatio, instance),
