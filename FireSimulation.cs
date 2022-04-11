@@ -40,8 +40,8 @@ namespace DvMod.SteamCutoff
         private const float CoalPieceMass = CoalDensity * CoalPieceVolume;
 
         /// <summary>Coal consumption rate (kg/s) per unit surface area (m^2)</summary>
-        private const float MaxConsumptionRate = 0.013f;
-        private float MaxConsumptionRatePerArea() => MaxConsumptionRate * Main.settings.combustionRate;
+        private const float MaxConsumptionRate = 0.036f;
+        private float MaxConsumptionRatePerArea() => MaxConsumptionRate;
 
         public const float CoalChunkMass = 7f; // kg
         private const float PiecesPerChunk = CoalChunkMass / CoalPieceMass;
