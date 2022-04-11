@@ -49,6 +49,9 @@ namespace DvMod.SteamCutoff
         [Draw("Torque multiplier")]
         public float torqueMultiplier = 1.0f;
 
+        [Draw("Water consumption multiplier")]
+        public float waterConsumptionMultiplier = 1.0f;
+
         // [Draw("Enable detailed low-speed simulation")]
         public bool enableLowSpeedSimulation = true;
 

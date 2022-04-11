@@ -160,8 +160,12 @@ namespace DvMod.SteamCutoff
 
                 var injector = Mathf.Pow(__instance.injector.value, Constants.InjectorGamma);
 
-                var waterVolumeToInject = 3000f * injector * deltaTime;
-                __instance.tenderWater.PassValueToNext(__instance.boilerWater, waterVolumeToInject);
+                var waterVolumeRequested = 3000f * injector * deltaTime;
+                var waterVolumeToExtract = Mathf.Min(
+                    waterVolumeRequested * Main.settings.waterConsumptionMultiplier,
+                    __instance.tenderWater.value);
+                __instance.tenderWater.AddNextValue(-waterVolumeToExtract);
+                __instance.boilerWater.AddNextValue(waterVolumeToExtract / Main.settings.waterConsumptionMultiplier);
                 __instance.boilerWater.AddNextValue(-4000f * __instance.waterDump.value * deltaTime);
 
                 return false;
