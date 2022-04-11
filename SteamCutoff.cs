@@ -348,17 +348,29 @@ namespace DvMod.SteamCutoff
             {
                 if (!enabled)
                     return true;
-                if (__instance.tenderCoal.value < FireState.CoalChunkMass ||
-                    __instance.coalbox.max - __instance.coalbox.value < FireState.CoalChunkMass)
-                {
-                    return false;
-                }
                 __instance.tenderCoal.PassValueTo(__instance.coalbox, FireState.CoalChunkMass);
                 if (__instance.fireOn.value == 0f && __instance.temperature.value > 400f)
                 {
                     __instance.fireOn.SetValue(1f);
                 }
                 return false;
+            }
+        }
+
+        [HarmonyPatch(typeof(ShovelNonPhysicalCoal), nameof(ShovelNonPhysicalCoal.UnloadCoal))]
+        public static class UnloadCoalPatch
+        {
+            public static bool Prefix(ShovelNonPhysicalCoal __instance, GameObject target, ref bool __result)
+            {
+                if (!enabled)
+                    return true;
+
+                __result = false;
+                var sim = TrainCar.Resolve(target)?.GetComponent<SteamLocoSimulation>();
+                if (sim == null)
+                    return false;
+                var massToTransfer = Mathf.Min(sim.tenderCoal.value, __instance.shovelChunksCapacity * FireState.CoalChunkMass);
+                return sim.coalbox.value + massToTransfer <= sim.coalbox.max;
             }
         }
     }
