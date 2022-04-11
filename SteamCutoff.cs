@@ -352,11 +352,19 @@ namespace DvMod.SteamCutoff
             {
                 if (!enabled)
                     return true;
-                __instance.tenderCoal.PassValueTo(__instance.coalbox, FireState.CoalChunkMass);
+
+                var massToExtract = Mathf.Min(
+                    FireState.CoalChunkMass * Main.settings.coalConsumptionMultiplier,
+                    __instance.tenderCoal.value);
+                var massToInsert = massToExtract / Main.settings.coalConsumptionMultiplier;
+                __instance.tenderCoal.AddValue(-massToExtract);
+                __instance.coalbox.AddValue(massToInsert);
+
                 if (__instance.fireOn.value == 0f && __instance.temperature.value > 400f)
                 {
                     __instance.fireOn.SetValue(1f);
                 }
+
                 return false;
             }
         }
@@ -373,8 +381,12 @@ namespace DvMod.SteamCutoff
                 var sim = TrainCar.Resolve(target)?.GetComponent<SteamLocoSimulation>();
                 if (sim == null)
                     return false;
-                var massToTransfer = Mathf.Min(sim.tenderCoal.value, __instance.shovelChunksCapacity * FireState.CoalChunkMass);
-                return sim.coalbox.value + massToTransfer <= sim.coalbox.max;
+                var massRequested = __instance.shovelChunksCapacity * FireState.CoalChunkMass;
+                var massToExtract = Mathf.Min(
+                     massRequested * Main.settings.coalConsumptionMultiplier,
+                     sim.tenderCoal.value);
+                var massToInsert = massToExtract / Main.settings.coalConsumptionMultiplier;
+                return sim.coalbox.value + massToInsert <= sim.coalbox.max;
             }
         }
     }
