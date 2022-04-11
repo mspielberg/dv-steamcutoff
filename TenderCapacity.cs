@@ -15,5 +15,19 @@ namespace DvMod.SteamCutoff
                 __instance.tenderWater.max = __instance.tenderWater.value = 25000f;
             }
         }
+
+        [HarmonyPatch(typeof(LocoStateSaveTender), nameof(LocoStateSaveTender.SetLocoStateSaveData))]
+        public static class SetLocoStateSaveDataPatch
+        {
+            public static void Postfix(LocoStateSaveTender __instance)
+            {
+                if (__instance.sim.tenderCoal.value == SteamLocoSimulation.TENDER_COAL_CAPACITY_KG
+                    && __instance.sim.tenderWater.value == SteamLocoSimulation.TENDER_WATER_CAPACITY_L)
+                {
+                    __instance.sim.tenderCoal.value = __instance.sim.tenderCoal.max;
+                    __instance.sim.tenderWater.value = __instance.sim.tenderWater.max;
+                }
+            }
+        }
     }
 }
