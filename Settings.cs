@@ -40,8 +40,6 @@ namespace DvMod.SteamCutoff
 
         [Draw("Front-end (exhaust) efficiency")]
         public float frontendEfficiency = 1.65f;
-        [Draw("Boiler thermal efficiency")]
-        public float boilerThermalEfficiency = 1.0f;
         [Draw("Steam consumption multiplier")]
         public float steamConsumptionMultiplier = 1.0f;
         [Draw("Torque multiplier")]

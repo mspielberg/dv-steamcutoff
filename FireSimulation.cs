@@ -115,7 +115,7 @@ namespace DvMod.SteamCutoff
         {
             float co = oxygenAvailability >= 0.5f ? 0.25f : oxygenAvailability / 2f;
             float co2 = oxygenAvailability >= 0.5f ? (1.5f * oxygenAvailability) - 0.75f : 0f;
-            return Main.settings.boilerThermalEfficiency * (co + co2) * Mathf.Lerp(.80f, .45f, Mathf.InverseLerp(0.1f, 1.5f, CoalConsumptionRate()));
+            return (co + co2) * Mathf.Lerp(.80f, .45f, Mathf.InverseLerp(0.1f, 1.5f, CoalConsumptionRate()));
         }
 
         private float InstantaneousHeatYieldRate()
