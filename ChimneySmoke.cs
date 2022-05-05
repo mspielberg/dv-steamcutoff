@@ -50,7 +50,7 @@ namespace DvMod.SteamCutoff
                 main.maxParticles = (int)(settings.maxSmokeLifetime * settings.maxSmokeRate) * 10;
                 var emission = __instance.chimneyParticles.emission;
                 emission.rateOverTime = rate;
-                Main.DebugLog(TrainCar.Resolve(__instance.gameObject), () => $"volume={volume},color={color},rate={rate},lifetime={lifetime}");
+                // Main.DebugLog(TrainCar.Resolve(__instance.gameObject), () => $"volume={volume},color={color},rate={rate},lifetime={lifetime}");
             }
         }
     }

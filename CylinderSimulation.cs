@@ -7,11 +7,8 @@ namespace DvMod.SteamCutoff
     {
         private const float SinusoidAverage = 2f / Mathf.PI;
 
-        private const float SteamAdaiabaticIndex = 1.33f;
+        private const float SteamAdiabaticIndex = 1.33f;
         private const float MinSteamTemperature_K = 380.0f;
-
-        private const float LowSpeedTransitionStart = 10f;
-        private const float LowSpeedTransitionWidth = 5;
 
         public const float CylinderVolume = 282f; // PRR L1s: 27x30"
         public static float SteamChestPressure(SteamLocoSimulation sim) => sim.boilerPressure.value * sim.regulator.value;
@@ -41,8 +38,9 @@ namespace DvMod.SteamCutoff
             else
             {
                 float cylinderExpansionRatio = pistonPosition / cutoff;
-                pressureRatio = cylinderExpansionRatio > maxExpansionRatio || !cylinderHasSteam.Contains(instance) ? 0f :
-                    Mathf.Pow(1f / cylinderExpansionRatio, SteamAdaiabaticIndex);
+                if (cylinderExpansionRatio > maxExpansionRatio || !cylinderHasSteam.Contains(instance))
+                    return 0f;
+                pressureRatio = InstantaneousPressureRatio(cylinderExpansionRatio);
             }
 
             float angleRatio = Mathf.Sin(Mathf.PI * pistonPosition) / SinusoidAverage;
@@ -74,39 +72,50 @@ namespace DvMod.SteamCutoff
 
             float pistonPosition1 = rotation % 0.5f * 2f;
             float pistonPosition2 = (rotation + 0.25f) % 0.5f * 2f;
-            return InstantaneousCylinderPowerRatio(cutoff, pistonPosition1, maxExpansionRatio, instance, leftCylinderHasSteam) +
-                InstantaneousCylinderPowerRatio(cutoff, pistonPosition2, maxExpansionRatio, instance, rightCylinderHasSteam);
+            float powerAtPosition(float position, HashSet<SteamLocoSimulation> hasSteam)
+            {
+                return InstantaneousCylinderPowerRatio(cutoff, position, maxExpansionRatio, instance, hasSteam);
+            }
+
+            return powerAtPosition(pistonPosition1, leftCylinderHasSteam) +
+                powerAtPosition(pistonPosition2, rightCylinderHasSteam);
         }
 
-        private static float AveragePowerRatio(float cutoff, float maxExpansionRatio)
+        public static float PowerRatio(float regulator, float cutoff, float revolution,
+            float revDistance, float cylinderSteamTemp, SteamLocoSimulation instance)
         {
-            float expansionRatio = Mathf.Min(1f / cutoff, maxExpansionRatio);
-            if (expansionRatio <= 1f)
-                return cutoff;
-            float meanExpansionPower = (Mathf.Pow(expansionRatio, 1f - SteamAdaiabaticIndex) - 1f) /
-                    ((1f - SteamAdaiabaticIndex) * (expansionRatio - 1f));
-            return cutoff * ((expansionRatio - 1) * meanExpansionPower + 1f);
-        }
+            float condensationExpansionRatio = CondensationExpansionRatio(cylinderSteamTemp);
+            float powerAtPosition(float revolution)
+            {
+                return InstantaneousPowerRatio(
+                    regulator,
+                    cutoff,
+                    revolution - revDistance + 1,
+                    condensationExpansionRatio,
+                    instance);
+            }
 
-        public static float PowerRatio(float regulator, float cutoff, float speed, float revolution,
-            float cylinderSteamTemp, SteamLocoSimulation instance)
-        {
-            float condensationExpansionRatio = Mathf.Pow((cylinderSteamTemp + 273.15f) / MinSteamTemperature_K,
-                    1f / (SteamAdaiabaticIndex - 1f));
-
-            return Mathf.Lerp(
-                InstantaneousPowerRatio(regulator, cutoff, revolution, condensationExpansionRatio, instance),
-                AveragePowerRatio(cutoff, condensationExpansionRatio),
-                (speed - LowSpeedTransitionStart) / LowSpeedTransitionWidth);
+            float powerAtStart = powerAtPosition(revolution - revDistance + 1);
+            float powerAtEnd = powerAtPosition(revolution);
+            return 0.5f * (powerAtStart + powerAtEnd);
         }
 
         public static float ResidualPressureRatio(float cutoff, float cylinderSteamTemp)
         {
-            float condensationExpansionRatio = Mathf.Pow((cylinderSteamTemp + 273.15f) / MinSteamTemperature_K,
-                    1f / (SteamAdaiabaticIndex - 1f));
-            if (1f / cutoff > condensationExpansionRatio)
-                return 0;
-            return Mathf.Pow(1f / cutoff, -SteamAdaiabaticIndex);
+            var expansionRatio = Mathf.Max(1f / cutoff, CondensationExpansionRatio(cylinderSteamTemp));
+            return InstantaneousPressureRatio(expansionRatio);
+        }
+
+        private static float CondensationExpansionRatio(float cylinderSteamTemp)
+        {
+            return Mathf.Pow(
+                (cylinderSteamTemp + 273.15f) / MinSteamTemperature_K,
+                1f / (SteamAdiabaticIndex - 1f));
+        }
+
+        private static float InstantaneousPressureRatio(float expansionRatio)
+        {
+            return Mathf.Pow(expansionRatio, -SteamAdiabaticIndex);
         }
     }
 }
