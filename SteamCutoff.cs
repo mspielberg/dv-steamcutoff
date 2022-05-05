@@ -290,13 +290,25 @@ namespace DvMod.SteamCutoff
 
                 var chuff = __instance.GetComponent<ChuffController>();
                 float cylinderSteamTemp = Mathf.Max(__instance.temperature.value, SteamTables.BoilingPoint(__instance));
-                float powerRatio = CylinderSimulation.PowerRatio(regulator, cutoff, __instance.speed.value,
-                    chuff.dbgCurrentRevolution, cylinderSteamTemp, __instance);
-                __instance.power.SetNextValue(
-                    Main.settings.torqueMultiplier
+                float powerRatio = CylinderSimulation.PowerRatio(
+                    regulator,
+                    cutoff,
+                    chuff.dbgCurrentRevolution,
+                    chuff.drivingWheel.rotationSpeed * (deltaTime / __instance.timeMult),
+                    cylinderSteamTemp,
+                    __instance);
+                var state = ExtraState.Instance(__instance);
+                var powerTarget = Main.settings.torqueMultiplier
                     * steamChestPressureRatio
                     * powerRatio
-                    * 0.28f * SteamLocoSimulation.POWER_CONST_HP);
+                    * 0.28f * SteamLocoSimulation.POWER_CONST_HP;
+                __instance.power.SetNextValue(
+                    Main.settings.torqueSmoothing <= 0 ? powerTarget :
+                     Mathf.SmoothDamp(
+                    __instance.power.value,
+                    powerTarget,
+                    ref state.powerVel,
+                    smoothTime: Main.settings.torqueSmoothing));
                 var residualPressureRatio = Mathf.Lerp(0.05f, 1f, Mathf.InverseLerp(0f, 0.8f, CylinderSimulation.ResidualPressureRatio(cutoff, cylinderSteamTemp)));
                 chuff.chuffPower = residualPressureRatio * steamChestPressureRatio;
                 // Main.DebugLog(loco, () => $"residualPressure={residualPressureRatio}, steamChestPressure={steamChestPressureRatio}, chuffPower={chuff.chuffPower}");

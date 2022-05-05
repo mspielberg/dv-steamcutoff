@@ -44,6 +44,8 @@ namespace DvMod.SteamCutoff
         public float steamConsumptionMultiplier = 1.0f;
         [Draw("Torque multiplier")]
         public float torqueMultiplier = 1.0f;
+        [Draw("Torque smoothing")]
+        public float torqueSmoothing = 0.1f;
 
         [Draw("Coal consumption multiplier")]
         public float coalConsumptionMultiplier = 1.0f;
