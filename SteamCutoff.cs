@@ -309,7 +309,10 @@ namespace DvMod.SteamCutoff
                     powerTarget,
                     ref state.powerVel,
                     smoothTime: Main.settings.torqueSmoothing));
-                var residualPressureRatio = Mathf.Lerp(0.05f, 1f, Mathf.InverseLerp(0f, 0.8f, CylinderSimulation.ResidualPressureRatio(cutoff, cylinderSteamTemp)));
+                var residualPressureRatio = Mathf.Lerp(
+                    0.05f,
+                    1f,
+                    Mathf.InverseLerp(0f, 0.8f, CylinderSimulation.ResidualPressureRatio(cutoff)));
                 chuff.chuffPower = residualPressureRatio * steamChestPressureRatio;
                 // Main.DebugLog(loco, () => $"residualPressure={residualPressureRatio}, steamChestPressure={steamChestPressureRatio}, chuffPower={chuff.chuffPower}");
 

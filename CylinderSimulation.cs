@@ -100,10 +100,9 @@ namespace DvMod.SteamCutoff
             return 0.5f * (powerAtStart + powerAtEnd);
         }
 
-        public static float ResidualPressureRatio(float cutoff, float cylinderSteamTemp)
+        public static float ResidualPressureRatio(float cutoff)
         {
-            var expansionRatio = Mathf.Max(1f / cutoff, CondensationExpansionRatio(cylinderSteamTemp));
-            return InstantaneousPressureRatio(expansionRatio);
+            return InstantaneousPressureRatio(1f / cutoff);
         }
 
         private static float CondensationExpansionRatio(float cylinderSteamTemp)
