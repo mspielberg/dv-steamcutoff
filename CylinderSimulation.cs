@@ -28,22 +28,44 @@ namespace DvMod.SteamCutoff
         public static float CylinderSteamMassFlow(SteamLocoSimulation sim) =>
             sim.regulator.value == 0 ? 0 : CylinderSteamVolumetricFlow(sim) * SteamTables.SteamDensity(SteamChestPressure(sim));
 
-        private static readonly HashSet<SteamLocoSimulation> leftCylinderHasSteam = new HashSet<SteamLocoSimulation>();
-        private static readonly HashSet<SteamLocoSimulation> rightCylinderHasSteam = new HashSet<SteamLocoSimulation>();
-
-        private static float InstantaneousCylinderPowerRatio(float cutoff, float pistonPosition, float maxExpansionRatio,
-            SteamLocoSimulation instance, HashSet<SteamLocoSimulation> cylinderHasSteam)
+        // <summary>Returns the position of the piston within a cylinder at a certain crank position. Assumes equal crank angles.</summary>
+        // <param name="cylinder">Zero-based index of the cylinder of interest.</param>
+        // <param name="totalCylinder">Total number of cylinders on the locomotive.</param>
+        // <param name="rotation">Current crank position in the range 0-1, with 0 being where cylinder 0 is at rear dead center, progressing forwards to front dead center at rotation 0.5.</param>
+        // <returns>A pair with the linear position of the active (intake) side of the piston in the range 0-1, with 0 being at the start of the stroke and 1 at the end, and true if the front side of the piston is the active (intake) side, and false if the rear side is active.</returns>
+        private static (float linearPosition, bool IsFrontActive) PistonLinearPosition(int cylinder, int totalCylinders, float rotation)
         {
+            var lead = (float)cylinder / (float)totalCylinders / 2f;
+            var pistonRotation = rotation + lead;
+            var linearPosition = pistonRotation % 0.5f * 2f;
+            var isFront = pistonRotation >= 0.5;
+            return (linearPosition, isFront);
+        }
+
+        private static float InstantaneousCylinderPowerRatio(
+            float cutoff,
+            float maxExpansionRatio,
+            int cylinder,
+            float rotation,
+            SteamLocoSimulation sim)
+        {
+            var (pistonPosition, isFrontActive) = PistonLinearPosition(cylinder, totalCylinders: 2, rotation);
+            Main.DebugLog(TrainCar.Resolve(sim.gameObject), () => $"rotation={rotation}, cylinder={cylinder}, piston={pistonPosition}, isFront={isFrontActive}");
+            var state = ExtraState.Instance(sim);
+            ref bool intakeHasSteam = ref state.IsCylinderPressurized(cylinder, isFrontActive);
+            ref bool exhaustHasSteam = ref state.IsCylinderPressurized(cylinder, !isFrontActive);
+
             float pressureRatio;
             if (pistonPosition <= cutoff)
             {
                 pressureRatio = 1f;
-                cylinderHasSteam.Add(instance);
+                intakeHasSteam = true;
+                exhaustHasSteam = false;
             }
             else
             {
                 float cylinderExpansionRatio = pistonPosition / cutoff;
-                if (cylinderExpansionRatio > maxExpansionRatio || !cylinderHasSteam.Contains(instance))
+                if (cylinderExpansionRatio > maxExpansionRatio || !intakeHasSteam)
                     return 0f;
                 pressureRatio = InstantaneousPressureRatio(cylinderExpansionRatio);
             }
@@ -66,24 +88,16 @@ namespace DvMod.SteamCutoff
         // 0.75 <= rotation < 1
         //    cyl1 acting backward, position = (rotation - 0.5) * 2
         //    cyl2 acting forward, position = (rotation - 0.75) * 2
-        private static float InstantaneousPowerRatio(float regulator, float cutoff, float rotation, float maxExpansionRatio,
-            SteamLocoSimulation instance)
+        private static float InstantaneousPowerRatio(
+            float cutoff,
+            float rotation,
+            float maxExpansionRatio,
+            SteamLocoSimulation sim)
         {
-            if (regulator < 0.01f)
-            {
-                leftCylinderHasSteam.Remove(instance);
-                rightCylinderHasSteam.Remove(instance);
-            }
-
-            float pistonPosition1 = rotation % 0.5f * 2f;
-            float pistonPosition2 = (rotation + 0.25f) % 0.5f * 2f;
-            float powerAtPosition(float position, HashSet<SteamLocoSimulation> hasSteam)
-            {
-                return InstantaneousCylinderPowerRatio(cutoff, position, maxExpansionRatio, instance, hasSteam);
-            }
-
-            return powerAtPosition(pistonPosition1, leftCylinderHasSteam) +
-                powerAtPosition(pistonPosition2, rightCylinderHasSteam);
+            float totalPower = 0f;
+            for (int cylinder = 0; cylinder < ExtraState.NumCylinders; cylinder++)
+                totalPower += InstantaneousCylinderPowerRatio(cutoff, maxExpansionRatio, cylinder, rotation, sim);
+            return totalPower;
         }
 
         public static float PowerRatio(float regulator, float cutoff, float revolution,
@@ -93,14 +107,14 @@ namespace DvMod.SteamCutoff
             float powerAtPosition(float revolution)
             {
                 return InstantaneousPowerRatio(
-                    regulator,
                     cutoff,
-                    revolution - revDistance + 1,
+                    revolution,
                     condensationExpansionRatio,
                     instance);
             }
 
-            float powerAtStart = powerAtPosition(revolution - revDistance + 1);
+            var startRevolution = revDistance > revolution ? revolution - revDistance + 1 : revolution - revDistance;
+            float powerAtStart = powerAtPosition(startRevolution);
             float powerAtEnd = powerAtPosition(revolution);
             float speedMultiplier = Mathf.InverseLerp(MaxRevSpeed, FullPowerRevSpeed, revSpeed);
             return 0.5f * (powerAtStart + powerAtEnd) * speedMultiplier;
