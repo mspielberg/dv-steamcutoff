@@ -11,6 +11,11 @@ namespace DvMod.SteamCutoff
         private const float MinSteamTemperature_K = 380.0f;
 
         public const float CylinderVolume = 282f; // PRR L1s: 27x30"
+        public const float MaxSpeed = 26.8224f; // USRA Light Mikado: 60 mph
+        public const float DriverCircumference = 4.4f; // see ChuffController
+        public const float MaxRevSpeed = MaxSpeed / DriverCircumference;
+        public const float FullPowerSpeed = 3f; // PRR L1s: ~7 mph before dropoff
+        public const float FullPowerRevSpeed = FullPowerSpeed / DriverCircumference;
         public static float SteamChestPressure(SteamLocoSimulation sim) => sim.boilerPressure.value * sim.regulator.value;
         public static float Cutoff(SteamLocoSimulation sim) =>
             Mathf.Max(Constants.MinCutoff, Mathf.Pow(sim.cutoff.value, Constants.CutoffGamma) * Constants.MaxCutoff);
@@ -82,7 +87,7 @@ namespace DvMod.SteamCutoff
         }
 
         public static float PowerRatio(float regulator, float cutoff, float revolution,
-            float revDistance, float cylinderSteamTemp, SteamLocoSimulation instance)
+            float revDistance, float revSpeed, float cylinderSteamTemp, SteamLocoSimulation instance)
         {
             float condensationExpansionRatio = CondensationExpansionRatio(cylinderSteamTemp);
             float powerAtPosition(float revolution)
@@ -97,7 +102,8 @@ namespace DvMod.SteamCutoff
 
             float powerAtStart = powerAtPosition(revolution - revDistance + 1);
             float powerAtEnd = powerAtPosition(revolution);
-            return 0.5f * (powerAtStart + powerAtEnd);
+            float speedMultiplier = Mathf.InverseLerp(MaxRevSpeed, FullPowerRevSpeed, revSpeed);
+            return 0.5f * (powerAtStart + powerAtEnd) * speedMultiplier;
         }
 
         public static float ResidualPressureRatio(float cutoff)

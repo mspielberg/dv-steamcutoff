@@ -295,6 +295,7 @@ namespace DvMod.SteamCutoff
                     cutoff,
                     chuff.dbgCurrentRevolution,
                     chuff.drivingWheel.rotationSpeed * (deltaTime / __instance.timeMult),
+                    chuff.drivingWheel.rotationSpeed,
                     cylinderSteamTemp,
                     __instance);
                 var state = ExtraState.Instance(__instance);
