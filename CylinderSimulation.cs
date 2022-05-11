@@ -37,7 +37,7 @@ namespace DvMod.SteamCutoff
         {
             var lead = (float)cylinder / (float)totalCylinders / 2f;
             var pistonRotation = rotation + lead;
-            var linearPosition = pistonRotation % 0.5f * 2f;
+            var linearPosition = 0.5f * (1f - Mathf.Cos(2f * Mathf.PI * (pistonRotation % 0.5f)));
             var isFront = pistonRotation >= 0.5;
             return (linearPosition, isFront);
         }
