@@ -13,7 +13,7 @@ namespace DvMod.SteamCutoff
         public const float CylinderVolume = 282f; // PRR L1s: 27x30"
         public const float MaxSpeed = 26.8224f; // USRA Light Mikado: 60 mph
         public const float DriverCircumference = 4.4f; // see ChuffController
-        public const float MaxRevSpeed = MaxSpeed / DriverCircumference;
+        public const float MaxRevSpeed = MaxSpeed / DriverCircumference * 1.25f;
         public const float FullPowerSpeed = 3f; // PRR L1s: ~7 mph before dropoff
         public const float FullPowerRevSpeed = FullPowerSpeed / DriverCircumference;
         public static float SteamChestPressure(SteamLocoSimulation sim) => sim.boilerPressure.value * sim.regulator.value;
@@ -50,7 +50,6 @@ namespace DvMod.SteamCutoff
             SteamLocoSimulation sim)
         {
             var (pistonPosition, isFrontActive) = PistonLinearPosition(cylinder, totalCylinders: 2, rotation);
-            Main.DebugLog(TrainCar.Resolve(sim.gameObject), () => $"rotation={rotation}, cylinder={cylinder}, piston={pistonPosition}, isFront={isFrontActive}");
             var state = ExtraState.Instance(sim);
             ref bool intakeHasSteam = ref state.IsCylinderPressurized(cylinder, isFrontActive);
             ref bool exhaustHasSteam = ref state.IsCylinderPressurized(cylinder, !isFrontActive);
