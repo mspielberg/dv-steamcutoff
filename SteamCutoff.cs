@@ -318,17 +318,26 @@ namespace DvMod.SteamCutoff
         [HarmonyPatch(typeof(ChuffController), nameof(ChuffController.Update))]
         public static class ChuffControllerUpdatePatch
         {
-            private static float chuffPower;
-
-            public static void Prefix(ChuffController __instance)
+            private const int ChuffsPerRevolution = 4;
+            public static bool Prefix(ChuffController __instance)
             {
-                chuffPower = __instance.chuffPower;
-                __instance.chuffsPerRevolution = 4;
-            }
-
-            public static void Postfix(ChuffController __instance)
-            {
-                __instance.chuffPower = chuffPower;
+                float num = (__instance.loco.drivingForce.wheelslip > 0f) ? (__instance.drivingWheel.rotationSpeed * __instance.wheelCircumference) : __instance.loco.GetForwardSpeed();
+                __instance.wheelRevolution = (__instance.wheelRevolution + num * Time.deltaTime + __instance.wheelCircumference) % __instance.wheelCircumference;
+                __instance.currentChuff = (int)(__instance.wheelRevolution / __instance.wheelCircumference * (float)ChuffsPerRevolution) % ChuffsPerRevolution;
+                __instance.chuffKmh = Mathf.Abs(num * 3.6f);
+                __instance.dbgVelocity = num;
+                __instance.dbgCurrentRevolution = __instance.wheelRevolution / __instance.wheelCircumference;
+                __instance.dbgCurrentChuff = __instance.currentChuff;
+                __instance.dbgKmHVelocity = __instance.chuffKmh;
+                if (__instance.currentChuff != __instance.lastChuff)
+                {
+                    __instance.lastChuff = __instance.currentChuff;
+                    if (__instance.OnChuff != null)
+                    {
+                        __instance.OnChuff(__instance.chuffPower);
+                    }
+                }
+                return false;
             }
         }
 
@@ -338,10 +347,11 @@ namespace DvMod.SteamCutoff
             public static void Postfix(SteamLocoChuffSmokeParticles __instance)
             {
                 var chuffController = __instance.GetComponent<ChuffController>();
-                if (chuffController.currentChuff % 2 == 0)
-                    __instance.chuffParticlesRight.Stop();
-                else
+                var rev = chuffController.wheelRevolution / chuffController.wheelCircumference % 0.5f;
+                if (rev >= 0.125f && rev <= 0.375f)
                     __instance.chuffParticlesLeft.Stop();
+                else
+                    __instance.chuffParticlesRight.Stop();
             }
         }
 
