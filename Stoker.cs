@@ -16,7 +16,7 @@ namespace DvMod.SteamCutoff
             var rate = sim.BoilerPressure.value / Main.settings.safetyValveThreshold * state.stokerSetting; // ratio 0-1
             var firingRate = MaxFiringRate * Mathf.Pow(rate, 2); // in kg/s
             HeadsUpDisplayBridge.instance?.UpdateStokerFeedRate(loco, firingRate);
-            sim.TenderCoal.PassValueTo(sim.Coalbox, firingRate * delta);
+            sim.TenderCoal.PassValueToNext(sim.Coalbox, firingRate * delta);
             if (sim.FireOn.value == 0f && sim.Temperature.value > 400f)
             {
                 sim.FireOn.SetValue(1f);
