@@ -8,20 +8,20 @@ namespace DvMod.SteamCutoff
 
         /// <summary>Boiling point in degrees centigrade.</summary>
         public static float BoilingPoint(float gaugePressure) => Mathf.Lerp(100f, 212f, gaugePressure / MaxPressure);
-        public static float BoilingPoint(SteamLocoSimulation sim) => BoilingPoint(sim.boilerPressure.value);
+        public static float BoilingPoint(ISimAdapter sim) => BoilingPoint(sim.BoilerPressure.value);
 
         /// <summary>Density of water in kg/L.</summary>
         public static float WaterDensityByTemp(float temp) => Mathf.Lerp(0.99821f, 0.84022f, Mathf.InverseLerp(20f, 220f, temp));
         public static float WaterDensity(float gaugePressure) => Mathf.Lerp(0.95866f, 0.84985f, gaugePressure / MaxPressure);
-        public static float WaterDensity(SteamLocoSimulation sim) => WaterDensity(sim.boilerPressure.value);
+        public static float WaterDensity(ISimAdapter sim) => WaterDensity(sim.BoilerPressure.value);
 
         /// <summary>Density of saturated steam in kg/L.</summary>
         public static float SteamDensity(float gaugePressure) => Mathf.Lerp(0.0005902f, 0.010041f, gaugePressure / MaxPressure);
-        public static float SteamDensity(SteamLocoSimulation sim) => SteamDensity(sim.boilerPressure.value);
+        public static float SteamDensity(ISimAdapter sim) => SteamDensity(sim.BoilerPressure.value);
 
         /// <summary>Energy to boil water in kJ/kg.</summary>
         public static float SpecificEnthalpyOfVaporization(float gaugePressure) => Mathf.Lerp(2257.6f, 1890.0f, gaugePressure / MaxPressure);
-        public static float SpecificEnthalpyOfVaporization(SteamLocoSimulation sim) => SpecificEnthalpyOfVaporization(sim.boilerPressure.value);
+        public static float SpecificEnthalpyOfVaporization(ISimAdapter sim) => SpecificEnthalpyOfVaporization(sim.BoilerPressure.value);
 
         /// <summary>Energy to heat water in kJ/(kg*K)</summary>
         public static float WaterSpecificHeatCapacity(float temp) => Mathf.Lerp(4.157f, 3.248f, Mathf.InverseLerp(20f, 220f, temp));

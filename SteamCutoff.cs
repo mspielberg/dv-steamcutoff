@@ -103,86 +103,97 @@ namespace DvMod.SteamCutoff
             }
         }
 
-        [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateBlowerDraftFireCoalTemp")]
-        public static class SimulateFirePatch
+        [HarmonyPatch(typeof(SteamLocoSimulation), nameof(SteamLocoSimulation.SimulateTick))]
+        public static class SimulateTickPatch
         {
-            public const float BlowerMaxRate = 20f;
-            public static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
+            public static bool Prefix(SteamLocoSimulation __instance, float delta)
             {
                 if (!enabled)
                     return true;
-                if (deltaTime <= 0)
+                if (delta <= 0)
                     return false;
 
-                ISimAdapter sim = new BaseSimAdapter(__instance);
-                TrainCar loco = TrainCar.Resolve(__instance.gameObject);
-                FireState state = FireState.Instance(__instance);
-                float cylinderMassFlow = CylinderSimulation.CylinderSteamMassFlow(sim);
-                float blowerMassFlow = sim.GetBlowerBonusNormalized() * BlowerMaxRate;
-                sim.BoilerPressure.AddNextValue(
-                    -blowerMassFlow * (deltaTime / sim.TimeMult) /
-                    SteamTables.SteamDensity(sim.BoilerPressure.value) /
-                    BoilerSteamVolume(sim.BoilerWater.value));
-
-                var exhaustFlow = cylinderMassFlow + blowerMassFlow;
-                HeadsUpDisplayBridge.instance?.UpdateExhaustFlow(loco, exhaustFlow);
-                var oxygenSupplyFlow = state.SetOxygenSupply(exhaustFlow, Mathf.Lerp(0.05f, 1f, sim.Draft.value));
-                HeadsUpDisplayBridge.instance?.UpdateOxygenSupply(loco, oxygenSupplyFlow);
-
-                var extraControlState = ExtraControlState.Instance(__instance);
-                if (loco.loadedInterior == null)
-                    extraControlState.fireOutSetting = 1f;
-                else
-                    sim.Coalbox.AddNextValue(-10f * Mathf.InverseLerp(0.5f, 0f, extraControlState.fireOutSetting) * (deltaTime / sim.TimeMult));
-
-                if (sim.FireOn.value == 1f && sim.Coalbox.value > 0f)
-                {
-                    sim.CoalConsumptionRate = state.CoalConsumptionRate();
-                    float num = sim.CoalConsumptionRate * (deltaTime / sim.TimeMult);
-                    sim.TotalCoalConsumed += num;
-                    sim.Coalbox.AddNextValue(-num);
-                }
-                else
-                {
-                    sim.FireOn.SetNextValue(0.0f);
-                    sim.CoalConsumptionRate = 0.0f;
-                }
-                return false;
-            }
-        }
-
-        [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateWater")]
-        private static class SimulateWaterPatch
-        {
-            public static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
-            {
-                if (!enabled)
-                    return true;
-
                 var sim = new BaseSimAdapter(__instance);
+                var d = delta / __instance.timeMult;
+                var loco = TrainCar.Resolve(__instance.gameObject);
+                var chuffController = __instance.GetComponent<ChuffController>();
+                var damageController = __instance.GetComponent<DamageController>();
+                var controlState = ExtraControlState.Instance(__instance);
+                var extraState = ExtraState.Instance(__instance);
+                var fireState = FireState.Instance(__instance);
+                var boilerState = BoilerSimulation.Instance(__instance);
 
-                var injector = Mathf.Pow(sim.Injector.value, Constants.InjectorGamma);
-
-                var waterVolumeRequested = 3000f * injector * deltaTime;
-                var waterVolumeToExtract = Mathf.Min(
-                    waterVolumeRequested * Main.settings.waterConsumptionMultiplier,
-                    sim.TenderWater.value);
-                sim.TenderWater.AddNextValue(-waterVolumeToExtract);
-                sim.BoilerWater.AddNextValue(waterVolumeToExtract / Main.settings.waterConsumptionMultiplier);
-                sim.BoilerWater.AddNextValue(-4000f * sim.WaterDump.value * deltaTime);
-
+                __instance.InitNextValues();
+                SimulateFire(sim, loco, controlState, fireState, d);
+                SimulateWater(sim, d);
+                SimulateSteam(sim, fireState, boilerState, damageController, d);
+                SimulateCylinder(sim, loco, chuffController, extraState, d);
+                __instance.SimulateSand(delta);
+                __instance.SetValuesToNextValues();
                 return false;
             }
         }
 
-        [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateSteam")]
-        private static class SimulateSteamPatch
+        public const float BlowerMaxRate = 20f;
+        public static void SimulateFire(ISimAdapter sim, TrainCar loco, ExtraControlState extraControlState, FireState fireState, float deltaTime)
         {
-            private const float PASSIVE_LEAK_ADJUST = 0.1f;
-            private const float SafetyValveBlowoff = 0.35f; // 5 psi
-            private const float SafetyValveOffset = 0.15f;
+            float cylinderMassFlow = CylinderSimulation.CylinderSteamMassFlow(sim);
+            float blowerMassFlow = sim.GetBlowerBonusNormalized() * BlowerMaxRate;
+            sim.BoilerPressure.AddNextValue(
+                -blowerMassFlow * deltaTime /
+                SteamTables.SteamDensity(sim.BoilerPressure.value) /
+                BoilerSteamVolume(sim.BoilerWater.value));
 
-            private static void SimulateSafetyValve(ISimAdapter sim, BoilerSimulation boilerSim, float deltaTime)
+            var exhaustFlow = cylinderMassFlow + blowerMassFlow;
+            HeadsUpDisplayBridge.instance?.UpdateExhaustFlow(loco, exhaustFlow);
+            var oxygenSupplyFlow = fireState.SetOxygenSupply(exhaustFlow, Mathf.Lerp(0.05f, 1f, sim.Draft.value));
+            HeadsUpDisplayBridge.instance?.UpdateOxygenSupply(loco, oxygenSupplyFlow);
+
+            if (loco.loadedInterior == null)
+                extraControlState.fireOutSetting = 1f;
+            else
+                sim.Coalbox.AddNextValue(-10f * Mathf.InverseLerp(0.5f, 0f, extraControlState.fireOutSetting) * deltaTime);
+
+            if (sim.FireOn.value == 1f && sim.Coalbox.value > 0f)
+            {
+                sim.CoalConsumptionRate = fireState.CoalConsumptionRate();
+                float num = sim.CoalConsumptionRate * deltaTime;
+                sim.TotalCoalConsumed += num;
+                sim.Coalbox.AddNextValue(-num);
+            }
+            else
+            {
+                sim.FireOn.SetNextValue(0.0f);
+                sim.CoalConsumptionRate = 0.0f;
+            }
+        }
+
+        private static void SimulateWater(ISimAdapter sim, float deltaTime)
+        {
+            var injector = Mathf.Pow(sim.Injector.value, Constants.InjectorGamma);
+
+            var waterVolumeRequested = 30000f * injector * deltaTime;
+            var waterVolumeToExtract = Mathf.Min(
+                waterVolumeRequested * Main.settings.waterConsumptionMultiplier,
+                sim.TenderWater.value);
+            sim.TenderWater.AddNextValue(-waterVolumeToExtract);
+            sim.BoilerWater.AddNextValue(waterVolumeToExtract / Main.settings.waterConsumptionMultiplier);
+            sim.BoilerWater.AddNextValue(-40000f * sim.WaterDump.value * deltaTime);
+        }
+
+        private const float PASSIVE_LEAK_ADJUST = 0.1f;
+        private const float SafetyValveBlowoff = 0.35f; // 5 psi
+        private const float SafetyValveOffset = 0.15f;
+
+        private static void SimulateSteam(
+            ISimAdapter sim,
+            FireState fireState,
+            BoilerSimulation boilerState,
+            DamageController damageController,
+            float deltaTime)
+        {
+
+            static void SimulateSafetyValve(ISimAdapter sim, BoilerSimulation boilerSim, float deltaTime)
             {
                 var closeThreshold = settings.safetyValveThreshold - SafetyValveBlowoff;
                 var secondaryThreshold = settings.safetyValveThreshold + SafetyValveOffset;
@@ -232,108 +243,80 @@ namespace DvMod.SteamCutoff
                 }
             }
 
-            public static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
-            {
-                if (!enabled)
-                    return true;
-                if (deltaTime <= 0)
-                    return false;
+            float boilerPressure = sim.BoilerPressure.value, boilerWaterAmount = sim.BoilerWater.value;
 
-                var sim = new BaseSimAdapter(__instance);
-                FireState state = FireState.Instance(__instance);
-                float boilerPressure = sim.BoilerPressure.value, boilerWaterAmount = sim.BoilerWater.value;
+            // heat from firebox
+            var heatPower = fireState.SmoothedHeatYieldRate(sim.FireOn.value > 0f); // in kW
+            sim.Temperature.SetNextValue(Mathf.Lerp(
+                SteamTables.BoilingPoint(boilerPressure),
+                1200f,
+                Mathf.Pow(
+                    Mathf.InverseLerp(0, Constants.TemperatureGaugeMaxPower, heatPower),
+                    Constants.TemperatureGaugeGamma)));
+            float heatEnergyFromCoal = heatPower * (deltaTime / sim.TimeMult); // in kJ
 
-                // heat from firebox
-                var heatPower = state.SmoothedHeatYieldRate(sim.FireOn.value > 0f); // in kW
-                sim.Temperature.SetNextValue(Mathf.Lerp(
-                    SteamTables.BoilingPoint(boilerPressure),
-                    1200f,
-                    Mathf.Pow(
-                        Mathf.InverseLerp(0, Constants.TemperatureGaugeMaxPower, heatPower),
-                        Constants.TemperatureGaugeGamma)));
-                float heatEnergyFromCoal = heatPower * (deltaTime / sim.TimeMult); // in kJ
+            // evaporation
+            float waterAdded = Mathf.Max(0f, sim.BoilerWater.nextValue - boilerWaterAmount); // L
+            boilerState.Update(waterAdded, heatEnergyFromCoal, deltaTime);
 
-                // evaporation
-                var boilerSim = BoilerSimulation.Instance(__instance);
-                float waterAdded = Mathf.Max(0f, sim.BoilerWater.nextValue - boilerWaterAmount); // L
-                boilerSim.Update(waterAdded, heatEnergyFromCoal, deltaTime);
+            // steam release
+            if (sim.SteamReleaser.value > 0.0f && sim.BoilerPressure.value > 0.0f)
+                sim.BoilerPressure.AddNextValue(-sim.SteamReleaser.value * 30.0f * deltaTime);
 
-                // steam release
-                if (sim.SteamReleaser.value > 0.0f && sim.BoilerPressure.value > 0.0f)
-                    sim.BoilerPressure.AddNextValue(-sim.SteamReleaser.value * 30.0f * deltaTime);
+            SimulateSafetyValve(sim, boilerState, deltaTime);
 
-                SimulateSafetyValve(sim, boilerSim, deltaTime);
-
-                // passive leakage
-                sim.PressureLeakMultiplier = Mathf.Lerp(
-                    1f, 100f / PASSIVE_LEAK_ADJUST,
-                    Mathf.InverseLerp(0.7f, 1f, __instance.GetComponent<DamageController>().bodyDamage.DamagePercentage));
-                float leakage = PASSIVE_LEAK_ADJUST * SteamLocoSimulation.PRESSURE_LEAK_L * sim.PressureLeakMultiplier * deltaTime;
-                sim.BoilerPressure.AddNextValue(-leakage);
-
-                return false;
-            }
+            // passive leakage
+            sim.PressureLeakMultiplier = Mathf.Lerp(
+                1f, 100f / PASSIVE_LEAK_ADJUST,
+                Mathf.InverseLerp(0.7f, 1f, damageController.bodyDamage.DamagePercentage));
+            float leakage = PASSIVE_LEAK_ADJUST * SteamLocoSimulation.PRESSURE_LEAK_L * sim.PressureLeakMultiplier * deltaTime;
+            sim.BoilerPressure.AddNextValue(-leakage);
         }
 
-        [HarmonyPatch(typeof(SteamLocoSimulation), "SimulateCylinder")]
-        private static class SimulateCylinderPatch
+        private static void SimulateCylinder(ISimAdapter sim, TrainCar loco, ChuffController chuffController, ExtraState extraState, float deltaTime)
         {
-            public static bool Prefix(SteamLocoSimulation __instance, float deltaTime)
-            {
-                if (!enabled)
-                    return true;
-                if (deltaTime <= 0)
-                    return false;
+            float cutoff = CylinderSimulation.Cutoff(sim);
+            float boilerPressureRatio =
+                sim.BoilerPressure.value / Main.settings.safetyValveThreshold;
+            float regulator = sim.Regulator.value;
+            float steamChestPressureRatio = boilerPressureRatio * regulator;
 
-                var loco = __instance.GetComponent<TrainCar>();
-                var sim = new BaseSimAdapter(__instance);
-                float cutoff = CylinderSimulation.Cutoff(sim);
-                float boilerPressureRatio =
-                    sim.BoilerPressure.value / Main.settings.safetyValveThreshold;
-                float regulator = sim.Regulator.value;
-                float steamChestPressureRatio = boilerPressureRatio * regulator;
+            float cylinderSteamTemp = Mathf.Max(sim.Temperature.value, SteamTables.BoilingPoint(sim));
+            float powerRatio = CylinderSimulation.PowerRatio(
+                regulator,
+                cutoff,
+                chuffController.dbgCurrentRevolution,
+                chuffController.drivingWheel.rotationSpeed * (deltaTime / sim.TimeMult),
+                chuffController.drivingWheel.rotationSpeed,
+                cylinderSteamTemp,
+                extraState);
+            var powerTarget = Main.settings.torqueMultiplier
+                * steamChestPressureRatio
+                * powerRatio
+                * 0.28f * SteamLocoSimulation.POWER_CONST_HP;
+            sim.Power.SetNextValue(
+                Main.settings.torqueSmoothing <= 0 ? powerTarget :
+                 Mathf.SmoothDamp(
+                sim.Power.value,
+                powerTarget,
+                ref extraState.powerVel,
+                smoothTime: Main.settings.torqueSmoothing));
+            var residualPressureRatio = Mathf.Lerp(
+                0.05f,
+                1f,
+                Mathf.InverseLerp(0f, 0.8f, CylinderSimulation.ResidualPressureRatio(cutoff)));
+            chuffController.chuffPower = residualPressureRatio * steamChestPressureRatio;
+            // Main.DebugLog(loco, () => $"residualPressure={residualPressureRatio}, steamChestPressure={steamChestPressureRatio}, chuffPower={chuff.chuffPower}");
 
-                var chuff = __instance.GetComponent<ChuffController>();
-                float cylinderSteamTemp = Mathf.Max(sim.Temperature.value, SteamTables.BoilingPoint(__instance));
-                float powerRatio = CylinderSimulation.PowerRatio(
-                    regulator,
-                    cutoff,
-                    chuff.dbgCurrentRevolution,
-                    chuff.drivingWheel.rotationSpeed * (deltaTime / sim.TimeMult),
-                    chuff.drivingWheel.rotationSpeed,
-                    cylinderSteamTemp,
-                    __instance);
-                var state = ExtraState.Instance(__instance);
-                var powerTarget = Main.settings.torqueMultiplier
-                    * steamChestPressureRatio
-                    * powerRatio
-                    * 0.28f * SteamLocoSimulation.POWER_CONST_HP;
-                sim.Power.SetNextValue(
-                    Main.settings.torqueSmoothing <= 0 ? powerTarget :
-                     Mathf.SmoothDamp(
-                    sim.Power.value,
-                    powerTarget,
-                    ref state.powerVel,
-                    smoothTime: Main.settings.torqueSmoothing));
-                var residualPressureRatio = Mathf.Lerp(
-                    0.05f,
-                    1f,
-                    Mathf.InverseLerp(0f, 0.8f, CylinderSimulation.ResidualPressureRatio(cutoff)));
-                chuff.chuffPower = residualPressureRatio * steamChestPressureRatio;
-                // Main.DebugLog(loco, () => $"residualPressure={residualPressureRatio}, steamChestPressure={steamChestPressureRatio}, chuffPower={chuff.chuffPower}");
-
-                float boilerSteamVolume = BoilerSteamVolume(sim.BoilerWater.value);
-                float boilerSteamMass = boilerSteamVolume * SteamTables.SteamDensity(__instance);
-                float steamMassConsumed =
-                    Main.settings.steamConsumptionMultiplier
-                    * 0.7f * CylinderSimulation.CylinderSteamMassFlow(sim)
-                    * (deltaTime / sim.TimeMult);
-                float pressureConsumed = sim.BoilerPressure.value * steamMassConsumed / boilerSteamMass;
-                sim.BoilerPressure.AddNextValue(-pressureConsumed);
-                HeadsUpDisplayBridge.instance?.UpdateSteamUsage(loco, steamMassConsumed / (deltaTime / sim.TimeMult));
-
-                return false;
-            }
+            float boilerSteamVolume = BoilerSteamVolume(sim.BoilerWater.value);
+            float boilerSteamMass = boilerSteamVolume * SteamTables.SteamDensity(sim);
+            float steamMassConsumed =
+                Main.settings.steamConsumptionMultiplier
+                * 0.7f * CylinderSimulation.CylinderSteamMassFlow(sim)
+                * (deltaTime / sim.TimeMult);
+            float pressureConsumed = sim.BoilerPressure.value * steamMassConsumed / boilerSteamMass;
+            sim.BoilerPressure.AddNextValue(-pressureConsumed);
+            HeadsUpDisplayBridge.instance?.UpdateSteamUsage(loco, steamMassConsumed / (deltaTime / sim.TimeMult));
         }
 
         [HarmonyPatch(typeof(ChuffController), nameof(ChuffController.Update))]

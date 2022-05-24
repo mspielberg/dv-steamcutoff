@@ -4,14 +4,14 @@ namespace DvMod.SteamCutoff
     {
         SimComponent FireOn { get; }
         // SimComponent FireDoorOpen { get; }
-        // SimComponent Temperature { get; }
+        SimComponent Temperature { get; }
         SimComponent Coalbox { get; }
         SimComponent BoilerWater { get; }
         SimComponent BoilerPressure { get; }
-        // SimComponent SteamReleaser { get; }
+        SimComponent SteamReleaser { get; }
         SimComponent SafetyPressureValve { get; }
-        // SimComponent Injector { get; }
-        // SimComponent WaterDump { get; }
+        SimComponent Injector { get; }
+        SimComponent WaterDump { get; }
         SimComponent Regulator { get; }
         SimComponent Cutoff { get; }
         SimComponent Draft { get; }
@@ -21,13 +21,14 @@ namespace DvMod.SteamCutoff
         // SimComponent Sand { get; }
         // SimComponent SandFlow { get; }
         // SimComponent SandValve { get; }
-        // SimComponent TenderWater { get; }
+        SimComponent TenderWater { get; }
         // SimComponent TenderCoal { get; }
 
         float CoalConsumptionRate { get; set; }
         float TotalCoalConsumed { get; set; }
         float GetBlowerBonusNormalized();
         float TimeMult { get; }
+        float PressureLeakMultiplier { get; set; }
     }
 
     public class BaseSimAdapter : ISimAdapter
@@ -72,8 +73,14 @@ namespace DvMod.SteamCutoff
             get => baseSim.TotalCoalConsumed;
             set => baseSim.TotalCoalConsumed = value;
         }
+        
         public float GetBlowerBonusNormalized() => baseSim.GetBlowerBonusNormalized();
         public float TimeMult => baseSim.timeMult;
-        public ref float PressureLeakMultiplier => ref baseSim.pressureLeakMultiplier;
+        
+        public float PressureLeakMultiplier
+        {
+            get => baseSim.pressureLeakMultiplier;
+            set => baseSim.pressureLeakMultiplier = value;
+        }
     }
 }

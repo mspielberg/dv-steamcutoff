@@ -47,10 +47,9 @@ namespace DvMod.SteamCutoff
             float maxExpansionRatio,
             int cylinder,
             float rotation,
-            SteamLocoSimulation sim)
+            ExtraState state)
         {
             var (pistonPosition, isFrontActive) = PistonLinearPosition(cylinder, totalCylinders: 2, rotation);
-            var state = ExtraState.Instance(sim);
             ref bool intakeHasSteam = ref state.IsCylinderPressurized(cylinder, isFrontActive);
             ref bool exhaustHasSteam = ref state.IsCylinderPressurized(cylinder, !isFrontActive);
 
@@ -91,16 +90,16 @@ namespace DvMod.SteamCutoff
             float cutoff,
             float rotation,
             float maxExpansionRatio,
-            SteamLocoSimulation sim)
+            ExtraState extraState)
         {
             float totalPower = 0f;
             for (int cylinder = 0; cylinder < ExtraState.NumCylinders; cylinder++)
-                totalPower += InstantaneousCylinderPowerRatio(cutoff, maxExpansionRatio, cylinder, rotation, sim);
+                totalPower += InstantaneousCylinderPowerRatio(cutoff, maxExpansionRatio, cylinder, rotation, extraState);
             return totalPower;
         }
 
         public static float PowerRatio(float regulator, float cutoff, float revolution,
-            float revDistance, float revSpeed, float cylinderSteamTemp, SteamLocoSimulation instance)
+            float revDistance, float revSpeed, float cylinderSteamTemp, ExtraState extraState)
         {
             float condensationExpansionRatio = CondensationExpansionRatio(cylinderSteamTemp);
             float powerAtPosition(float revolution)
@@ -109,7 +108,7 @@ namespace DvMod.SteamCutoff
                     cutoff,
                     revolution,
                     condensationExpansionRatio,
-                    instance);
+                    extraState);
             }
 
             var startRevolution = revDistance > revolution ? revolution - revDistance + 1 : revolution - revDistance;
