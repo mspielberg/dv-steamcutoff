@@ -16,17 +16,17 @@ namespace DvMod.SteamCutoff
         public const float MaxRevSpeed = MaxSpeed / DriverCircumference * 1.25f;
         public const float FullPowerSpeed = 3f; // PRR L1s: ~7 mph before dropoff
         public const float FullPowerRevSpeed = FullPowerSpeed / DriverCircumference;
-        public static float SteamChestPressure(SteamLocoSimulation sim) => sim.boilerPressure.value * sim.regulator.value;
-        public static float Cutoff(SteamLocoSimulation sim) =>
-            Mathf.Max(Constants.MinCutoff, Mathf.Pow(sim.cutoff.value, Constants.CutoffGamma) * Constants.MaxCutoff);
+        public static float SteamChestPressure(ISimAdapter sim) => sim.BoilerPressure.value * sim.Regulator.value;
+        public static float Cutoff(ISimAdapter sim) =>
+            Mathf.Max(Constants.MinCutoff, Mathf.Pow(sim.Cutoff.value, Constants.CutoffGamma) * Constants.MaxCutoff);
         // 4 strokes / revolution
         // 4.4m driver circumference (see ChuffController)
         // ~909 strokes / km
         // (~0.25 strokes / s) / (km/h)
-        public static float CylinderSteamVolumetricFlow(SteamLocoSimulation sim) =>
-            sim.speed.value * 0.25f * CylinderVolume * Cutoff(sim);
-        public static float CylinderSteamMassFlow(SteamLocoSimulation sim) =>
-            sim.regulator.value == 0 ? 0 : CylinderSteamVolumetricFlow(sim) * SteamTables.SteamDensity(SteamChestPressure(sim));
+        public static float CylinderSteamVolumetricFlow(ISimAdapter sim) =>
+            sim.Speed.value * 0.25f * CylinderVolume * Cutoff(sim);
+        public static float CylinderSteamMassFlow(ISimAdapter sim) =>
+            sim.Regulator.value == 0 ? 0 : CylinderSteamVolumetricFlow(sim) * SteamTables.SteamDensity(SteamChestPressure(sim));
 
         // <summary>Returns the position of the piston within a cylinder at a certain crank position. Assumes equal crank angles.</summary>
         // <param name="cylinder">Zero-based index of the cylinder of interest.</param>

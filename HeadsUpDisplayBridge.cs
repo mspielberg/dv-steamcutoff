@@ -104,7 +104,7 @@ namespace DvMod.SteamCutoff
                     {
                         var sim = car.GetComponent<SteamLocoSimulation>();
                         if (sim != null)
-                            return CylinderSimulation.Cutoff(sim);
+                            return CylinderSimulation.Cutoff(new BaseSimAdapter(sim));
                         return null;
                     },
                     v => $"{v:P0}");
