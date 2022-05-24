@@ -38,21 +38,21 @@ namespace DvMod.SteamCutoff
         public None()
         {
         }
-        
+
         public override T? ToNullable() => null;
         public override Option<U> Map<U>(Func<T, U> f) where U : class => new None<U>();
         public override OptionS<U> MapS<U>(Func<T, U> f) where U : struct => new NoneS<U>();
         public override Option<U> FlatMap<U>(Func<T, Option<U>> f) where U : class => new None<U>();
         public override OptionS<U> FlatMapS<U>(Func<T, OptionS<U>> f) where U : struct => new NoneS<U>();
     }
-    
+
     public sealed class NoneS<T> : OptionS<T>
         where T : struct
     {
         public NoneS()
         {
         }
-        
+
         public override T? ToNullable() => null;
         public override Option<U> Map<U>(Func<T, U> f) where U : class => new None<U>();
         public override OptionS<U> MapS<U>(Func<T, U> f) where U : struct => new NoneS<U>();
@@ -74,7 +74,7 @@ namespace DvMod.SteamCutoff
         public override Option<U> FlatMap<U>(Func<T, Option<U>> f) where U : class => f(elem);
         public override OptionS<U> FlatMapS<U>(Func<T, OptionS<U>> f) where U : struct => f(elem);
     }
-    
+
     public class SomeS<T> : OptionS<T>
         where T : struct
     {

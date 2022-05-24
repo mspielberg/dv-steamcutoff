@@ -5,17 +5,13 @@ namespace DvMod.SteamCutoff
 {
     public static class CylinderSimulation
     {
-        private const float SinusoidAverage = 2f / Mathf.PI;
+        private static readonly float RootTwo = Mathf.Sqrt(2f);
 
         private const float SteamAdiabaticIndex = 1.33f;
         private const float MinSteamTemperature_K = 380.0f;
 
         public const float CylinderVolume = 282f; // PRR L1s: 27x30"
-        public const float MaxSpeed = 26.8224f; // USRA Light Mikado: 60 mph
         public const float DriverCircumference = 4.4f; // see ChuffController
-        public const float MaxRevSpeed = MaxSpeed / DriverCircumference * 1.25f;
-        public const float FullPowerSpeed = 3f; // PRR L1s: ~7 mph before dropoff
-        public const float FullPowerRevSpeed = FullPowerSpeed / DriverCircumference;
         public static float SteamChestPressure(ISimAdapter sim) => sim.BoilerPressure.value * sim.Regulator.value;
         public static float Cutoff(ISimAdapter sim) =>
             Mathf.Max(Constants.MinCutoff, Mathf.Pow(sim.Cutoff.value, Constants.CutoffGamma) * Constants.MaxCutoff);
@@ -33,13 +29,15 @@ namespace DvMod.SteamCutoff
         // <param name="totalCylinder">Total number of cylinders on the locomotive.</param>
         // <param name="rotation">Current crank position in the range 0-1, with 0 being where cylinder 0 is at rear dead center, progressing forwards to front dead center at rotation 0.5.</param>
         // <returns>A pair with the linear position of the active (intake) side of the piston in the range 0-1, with 0 being at the start of the stroke and 1 at the end, and true if the front side of the piston is the active (intake) side, and false if the rear side is active.</returns>
-        private static (float linearPosition, bool IsFrontActive) PistonLinearPosition(int cylinder, int totalCylinders, float rotation)
+        private static (float linearPosition, bool IsFrontActive, float crankOffset) PistonLinearPosition(int cylinder, int totalCylinders, float rotation)
         {
             var lead = (float)cylinder / (float)totalCylinders / 2f;
             var pistonRotation = rotation + lead;
-            var linearPosition = 0.5f * (1f - Mathf.Cos(2f * Mathf.PI * (pistonRotation % 0.5f)));
+            var angle = 2f * Mathf.PI * (pistonRotation % 0.5f);
+            var linearPosition = 0.5f * (1f - Mathf.Cos(angle));
             var isFront = pistonRotation >= 0.5;
-            return (linearPosition, isFront);
+            var crankOffset = Mathf.Sin(angle);
+            return (linearPosition, isFront, crankOffset);
         }
 
         private static float InstantaneousCylinderPowerRatio(
@@ -49,7 +47,7 @@ namespace DvMod.SteamCutoff
             float rotation,
             ExtraState state)
         {
-            var (pistonPosition, isFrontActive) = PistonLinearPosition(cylinder, totalCylinders: 2, rotation);
+            var (pistonPosition, isFrontActive, crankOffset) = PistonLinearPosition(cylinder, totalCylinders: 2, rotation);
             ref bool intakeHasSteam = ref state.IsCylinderPressurized(cylinder, isFrontActive);
             ref bool exhaustHasSteam = ref state.IsCylinderPressurized(cylinder, !isFrontActive);
 
@@ -68,7 +66,7 @@ namespace DvMod.SteamCutoff
                 pressureRatio = InstantaneousPressureRatio(cylinderExpansionRatio);
             }
 
-            float angleRatio = Mathf.Sin(Mathf.PI * pistonPosition) / SinusoidAverage;
+            float angleRatio = crankOffset;
             return pressureRatio * angleRatio;
         }
 
@@ -95,11 +93,11 @@ namespace DvMod.SteamCutoff
             float totalPower = 0f;
             for (int cylinder = 0; cylinder < ExtraState.NumCylinders; cylinder++)
                 totalPower += InstantaneousCylinderPowerRatio(cutoff, maxExpansionRatio, cylinder, rotation, extraState);
-            return totalPower;
+            return totalPower / ExtraState.NumCylinders;
         }
 
         public static float PowerRatio(float regulator, float cutoff, float revolution,
-            float revDistance, float revSpeed, float cylinderSteamTemp, ExtraState extraState)
+            float revDistance, float cylinderSteamTemp, ExtraState extraState)
         {
             float condensationExpansionRatio = CondensationExpansionRatio(cylinderSteamTemp);
             float powerAtPosition(float revolution)
@@ -114,9 +112,8 @@ namespace DvMod.SteamCutoff
             var startRevolution = revDistance > revolution ? revolution - revDistance + 1 : revolution - revDistance;
             float powerAtStart = powerAtPosition(startRevolution);
             float powerAtEnd = powerAtPosition(revolution);
-            float speedMultiplier = Mathf.InverseLerp(MaxRevSpeed, FullPowerRevSpeed, revSpeed);
-            //Debug.Log($"apparent revspeed={revSpeed*DriverCircumference*3.6f}");
-            return 0.5f * (powerAtStart + powerAtEnd) * speedMultiplier;
+            // normalize to peak at 1.0
+            return (powerAtStart + powerAtEnd) / RootTwo;
         }
 
         public static float ResidualPressureRatio(float cutoff)

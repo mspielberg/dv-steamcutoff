@@ -335,14 +335,12 @@ namespace DvMod.SteamCutoff
                 cutoff,
                 chuff.CurrentRevolution,
                 chuff.RotationSpeed * deltaTime,
-                chuff.RotationSpeed,
                 cylinderSteamTemp,
                 extraState);
-            var powerTarget = Main.settings.torqueMultiplier
-                * steamChestPressureRatio
+            var powerTarget =
+                steamChestPressureRatio
                 * powerRatio
                 * sim.Power.max;
-                // * 0.28f * SteamLocoSimulation.POWER_CONST_HP;
             sim.Power.SetNextValue(
                 Main.settings.torqueSmoothing <= 0
                 ? powerTarget
@@ -366,6 +364,21 @@ namespace DvMod.SteamCutoff
             float pressureConsumed = sim.BoilerPressure.value * steamMassConsumed / boilerSteamMass;
             sim.BoilerPressure.AddNextValue(-pressureConsumed);
             HeadsUpDisplayBridge.instance?.UpdateSteamUsage(loco, steamMassConsumed / deltaTime);
+        }
+
+        [HarmonyPatch(typeof(LocoControllerSteam), nameof(LocoControllerSteam.GetTotalPowerForcePercentage))]
+        public static class GetTotalPowerForcePercentagePatch
+        {
+            // Re-normalizes running gear motion to average at 1.0 instead of peaking at 1.0 (approximately 1.111)
+            // private static readonly float ScalingFactor = Mathf.PI * Mathf.Sqrt(2) / 4f;
+            private const float MaxSpeed = 120f;
+            public static bool Prefix(LocoControllerSteam __instance, ref float __result)
+            {
+                if (!enabled)
+                    return true;
+                __result = __instance.sim.power.value / __instance.sim.power.max * 0.4f * Mathf.InverseLerp(MaxSpeed, 12f, __instance.GetSpeedKmH());
+                return false;
+            }
         }
 
         [HarmonyPatch(typeof(ChuffController), nameof(ChuffController.Update))]
