@@ -14,12 +14,14 @@
   <ItemGroup>
     <PackageReference Include="RedworkDE.Publicizer" Version="0.2.2" />
     <PublicizeAssembly Include="Assembly-CSharp" Private="True" Readonly="True" />
+    <PublicizeAssembly Include="DVCustomCarLoader" Private="True" Readonly="True" />
   </ItemGroup>
 
   <ItemGroup>
     <Reference Include="0Harmony" />
     <Reference Include="Assembly-CSharp" />
     <Reference Include="DV.Utils" />
+    <Reference Include="DVCustomCarLoader" />
     <Reference Include="NAudio" />
     <Reference Include="UnityEngine.AnimationModule" />
     <Reference Include="UnityEngine.AudioModule" />

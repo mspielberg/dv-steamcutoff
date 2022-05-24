@@ -89,8 +89,7 @@ namespace DvMod.SteamCutoff
                     where T : class
                 {
                     return car =>
-                        Option<SteamLocoSimulation>.Of(car.GetComponent<SteamLocoSimulation>())
-                        .Map(baseSim => new BaseSimAdapter(baseSim))
+                        Option<ISimAdapter>.Of(SimAdapter.From(car))
                         .Map(f)
                         .ToNullable();
                 }
@@ -98,8 +97,7 @@ namespace DvMod.SteamCutoff
                 Func<TrainCar, float?> SFromSim(Func<ISimAdapter, float> f)
                 {
                     return car =>
-                        Option<SteamLocoSimulation>.Of(car.GetComponent<SteamLocoSimulation>())
-                        .Map(baseSim => new BaseSimAdapter(baseSim))
+                        Option<ISimAdapter>.Of(SimAdapter.From(car))
                         .MapS(f)
                         .ToNullable();
                 }

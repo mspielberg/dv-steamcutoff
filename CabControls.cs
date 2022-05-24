@@ -43,6 +43,7 @@ namespace DvMod.SteamCutoff
 
     public class ControlState
     {
+        public bool initialized;
         public float stokerSetting;
         public float fireOutSetting;
     }
@@ -60,6 +61,7 @@ namespace DvMod.SteamCutoff
             stokerCtrl.ValueChanged += e => state.stokerSetting = e.newValue;
             var fireOutCtrl = __instance.fireOutValveObj.GetComponent<ControlImplBase>();
             fireOutCtrl.ValueChanged += e => state.fireOutSetting = e.newValue;
+            state.initialized = true;
         }
 
         public static void Postfix(CabInputSteamExtra __instance)

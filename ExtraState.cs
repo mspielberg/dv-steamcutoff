@@ -10,10 +10,10 @@ namespace DvMod.SteamCutoff
         {
             if (!states.TryGetValue(car, out var state))
             {
-                var baseSim = car.GetComponent<SteamLocoSimulation>();
-                if (baseSim == null)
+                var simAdapter = SimAdapter.From(car);
+                if (simAdapter == null)
                     return null;
-                state = new ExtraState(new BaseSimAdapter(baseSim), car);
+                state = new ExtraState(simAdapter, car);
                 states.Add(car, state);
             }
             return state;

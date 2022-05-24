@@ -115,6 +115,7 @@ namespace DvMod.SteamCutoff
             float powerAtStart = powerAtPosition(startRevolution);
             float powerAtEnd = powerAtPosition(revolution);
             float speedMultiplier = Mathf.InverseLerp(MaxRevSpeed, FullPowerRevSpeed, revSpeed);
+            //Debug.Log($"apparent revspeed={revSpeed*DriverCircumference*3.6f}");
             return 0.5f * (powerAtStart + powerAtEnd) * speedMultiplier;
         }
 

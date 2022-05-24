@@ -1,6 +1,8 @@
 using DV.CabControls;
+using DVCustomCarLoader.LocoComponents.Steam;
 using HarmonyLib;
 using System;
+using System.Reflection;
 using UnityEngine;
 using UnityModManagerNet;
 
@@ -116,7 +118,7 @@ namespace DvMod.SteamCutoff
                 var sim = new BaseSimAdapter(__instance);
                 var d = delta / __instance.timeMult;
                 var loco = TrainCar.Resolve(__instance.gameObject);
-                var chuffController = __instance.GetComponent<ChuffController>();
+                var chuffController = new BaseChuffAdapter(__instance.GetComponent<ChuffController>());
                 var damageController = __instance.GetComponent<DamageController>();
                 var extraState = ExtraState.Instance(loco)!;
 
@@ -129,6 +131,55 @@ namespace DvMod.SteamCutoff
                 __instance.SimulateSand(delta);
                 __instance.SetValuesToNextValues();
                 return false;
+            }
+        }
+
+        [HarmonyPatch]
+        public static class CCLSimulateTickPatch
+        {
+            public static bool Prepare()
+            {
+                return UnityModManager.FindMod("DVCustomCarLoader")?.Loaded ?? false;
+            }
+
+            public static MethodBase TargetMethod()
+            {
+                return UnityModManager.FindMod("DVCustomCarLoader").Assembly
+                    .GetType("DVCustomCarLoader.LocoComponents.Steam.CustomLocoSimSteam")
+                    .GetMethod("SimulateTick", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            }
+
+            public static bool Prefix(object __instance, float delta)
+            {
+                return Inner.Execute(__instance, delta);
+            }
+
+            private static class Inner
+            {
+                public static bool Execute(object instance, float delta)
+                {
+                    if (!enabled)
+                        return true;
+                    if (delta <= 0)
+                        return false;
+
+                    var __instance = (CustomLocoSimSteam)instance;
+                    var sim = new CustomSimAdapter((CustomLocoSimSteam)__instance);
+                    var d = delta / __instance.timeMult;
+                    var loco = TrainCar.Resolve(__instance.gameObject);
+                    var chuffController = new CustomChuffAdapter(__instance.GetComponent<CustomChuffController>());
+                    var damageController = __instance.GetComponent<DamageController>();
+                    var extraState = ExtraState.Instance(loco)!;
+                    __instance.InitNextValues();
+                    SimulateFire(sim, loco, extraState, d);
+                    SimulateWater(sim, d);
+                    SimulateSteam(sim, extraState, damageController, d);
+                    SimulateCylinder(sim, loco, chuffController, extraState, d);
+                    // Stoker.Simulate(sim, loco, extraState, d);
+                    __instance.SimulateSand(delta);
+                    __instance.SetValuesToNextValues();
+                    return false;
+                }
             }
         }
 
@@ -149,7 +200,7 @@ namespace DvMod.SteamCutoff
 
             if (loco.loadedInterior == null)
                 extraState.controlState.fireOutSetting = 1f;
-            else
+            else if (extraState.controlState.initialized)
                 sim.Coalbox.AddNextValue(-10f * Mathf.InverseLerp(0.5f, 0f, extraState.controlState.fireOutSetting) * deltaTime);
 
             if (sim.FireOn.value == 1f && sim.Coalbox.value > 0f)
@@ -270,7 +321,7 @@ namespace DvMod.SteamCutoff
             sim.BoilerPressure.AddNextValue(-leakage);
         }
 
-        private static void SimulateCylinder(ISimAdapter sim, TrainCar loco, ChuffController chuffController, ExtraState extraState, float deltaTime)
+        private static void SimulateCylinder(ISimAdapter sim, TrainCar loco, IChuffAdapter chuff, ExtraState extraState, float deltaTime)
         {
             float cutoff = CylinderSimulation.Cutoff(sim);
             float boilerPressureRatio =
@@ -282,28 +333,29 @@ namespace DvMod.SteamCutoff
             float powerRatio = CylinderSimulation.PowerRatio(
                 regulator,
                 cutoff,
-                chuffController.dbgCurrentRevolution,
-                chuffController.drivingWheel.rotationSpeed * deltaTime,
-                chuffController.drivingWheel.rotationSpeed,
+                chuff.CurrentRevolution,
+                chuff.RotationSpeed * deltaTime,
+                chuff.RotationSpeed,
                 cylinderSteamTemp,
                 extraState);
             var powerTarget = Main.settings.torqueMultiplier
                 * steamChestPressureRatio
                 * powerRatio
-                * 0.28f * SteamLocoSimulation.POWER_CONST_HP;
+                * sim.Power.max;
+                // * 0.28f * SteamLocoSimulation.POWER_CONST_HP;
             sim.Power.SetNextValue(
-                Main.settings.torqueSmoothing <= 0 ? powerTarget :
-                 Mathf.SmoothDamp(
-                sim.Power.value,
-                powerTarget,
-                ref extraState.powerVel,
-                smoothTime: Main.settings.torqueSmoothing));
+                Main.settings.torqueSmoothing <= 0
+                ? powerTarget
+                : Mathf.SmoothDamp(
+                    sim.Power.value,
+                    powerTarget,
+                    ref extraState.powerVel,
+                    smoothTime: Main.settings.torqueSmoothing));
             var residualPressureRatio = Mathf.Lerp(
                 0.05f,
                 1f,
                 Mathf.InverseLerp(0f, 0.8f, CylinderSimulation.ResidualPressureRatio(cutoff)));
-            chuffController.chuffPower = residualPressureRatio * steamChestPressureRatio;
-            // Main.DebugLog(loco, () => $"residualPressure={residualPressureRatio}, steamChestPressure={steamChestPressureRatio}, chuffPower={chuff.chuffPower}");
+            chuff.ChuffPower = residualPressureRatio * steamChestPressureRatio;
 
             float boilerSteamVolume = BoilerSteamVolume(sim.BoilerWater.value);
             float boilerSteamMass = boilerSteamVolume * SteamTables.SteamDensity(sim);
