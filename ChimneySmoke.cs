@@ -21,14 +21,15 @@ namespace DvMod.SteamCutoff
         {
             WaitForSeconds waitTimeout = WaitFor.Seconds(0.2f);
             yield return waitTimeout;
-            var sim = __instance.loco.sim;
-            var state = FireState.Instance(sim);
+            var loco = TrainCar.Resolve(__instance.gameObject);
+            var sim = new BaseSimAdapter(__instance.loco.sim);
+            var state = ExtraState.Instance(loco)!.fireState;
             var settings = Main.settings.smoke;
             while (true)
             {
                 yield return waitTimeout;
 
-                if (sim.fireOn.value == 0f)
+                if (sim.FireOn.value == 0f)
                 {
                     __instance.chimneyParticles.Stop();
                     continue;

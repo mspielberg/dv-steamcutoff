@@ -85,35 +85,31 @@ namespace DvMod.SteamCutoff
                     pusher = DvMod.HeadsUpDisplay.Registry.RegisterPush<D>(label, order ?? label, hidden);
                 }
 
-                Func<TrainCar, T?> FromComponent<T, C>(Func<TrainCar, C?> extractor, Func<C, T> f)
+                Func<TrainCar, T?> FromSim<T>(Func<ISimAdapter, T> f)
                     where T : class
-                    where C : class
                 {
                     return car =>
-                    {
-                        var c = extractor(car);
-                        if (c != null)
-                            return f(c);
-                        return default;
-                    };
+                        Option<SteamLocoSimulation>.Of(car.GetComponent<SteamLocoSimulation>())
+                        .Map(baseSim => new BaseSimAdapter(baseSim))
+                        .Map(f)
+                        .ToNullable();
+                }
+
+                Func<TrainCar, float?> SFromSim(Func<ISimAdapter, float> f)
+                {
+                    return car =>
+                        Option<SteamLocoSimulation>.Of(car.GetComponent<SteamLocoSimulation>())
+                        .Map(baseSim => new BaseSimAdapter(baseSim))
+                        .MapS(f)
+                        .ToNullable();
                 }
 
                 RegisterFloatPull(
                     "Cutoff",
-                    car =>
-                    {
-                        var sim = car.GetComponent<SteamLocoSimulation>();
-                        if (sim != null)
-                            return CylinderSimulation.Cutoff(new BaseSimAdapter(sim));
-                        return null;
-                    },
+                    SFromSim(sim => CylinderSimulation.Cutoff(sim)),
                     v => $"{v:P0}");
 
-                Func<TrainCar, T?> FromSim<T>(Func<SteamLocoSimulation, T> f)
-                    where T : class
-                    => FromComponent(car => car.GetComponent<SteamLocoSimulation>(), f);
-
-                RegisterPull("Boiler water level", FromSim(sim => sim.boilerWater.value * Liter));
+                RegisterPull("Boiler water level", FromSim(sim => sim.BoilerWater.value * Liter));
 
                 RegisterPush(out exhaustFlowPusher, "Exhaust flow");
 
@@ -121,29 +117,46 @@ namespace DvMod.SteamCutoff
 
                 RegisterFloatPull(
                     "Oxygen availability",
-                    car => FireState.Instance(car)?.oxygenAvailability,
+                    car => ExtraState.Instance(car)?.fireState?.oxygenAvailability,
                     v => $"{v:P0}");
 
-                RegisterPull("Firebox", FromSim(sim => sim.coalbox.value * Kilogram));
+                RegisterPull("Firebox", FromSim(sim => sim.Coalbox.value * Kilogram));
 
                 RegisterPush(out stokerFeedRatePusher, "Stoker feed rate");
 
-                RegisterPull("Coal use", FromSim(sim => sim.coalConsumptionRate * KilogramsPerSecond));
+                RegisterPull("Coal use", FromSim(sim => sim.CoalConsumptionRate * KilogramsPerSecond));
+
+                Func<TrainCar, T?> FromFireState<T>(Func<FireState, T> f)
+                    where T : class
+                {
+                    return car => Option<ExtraState>.Of(ExtraState.Instance(car))
+                        .Map(state => state.fireState)
+                        .Map(f).ToNullable();
+                }
+
+                Func<TrainCar, float?> FromFireStateS(Func<FireState, float> f)
+                {
+                    return car => Option<ExtraState>.Of(ExtraState.Instance(car))
+                        .Map(state => state.fireState)
+                        .MapS(f).ToNullable();
+                }
 
                 RegisterFloatPull(
                     "Combustion efficiency",
-                    car => FireState.Instance(car)?.CombustionEfficiency(),
+                    FromFireStateS(fireState => fireState.CombustionEfficiency()),
                     v => $"{v:P0}");
 
                 RegisterPull(
                     "Heat yield",
-                    FromComponent(FireState.Instance, state => state.smoothedHeatYieldRate * Kilowatt));
+                    FromFireState(fireState => fireState.smoothedHeatYieldRate * Kilowatt));
 
                 RegisterPush(out boilerSteamMassPusher, "Boiler steam mass");
 
                 Func<TrainCar, T?> FromBoilerSim<T>(Func<BoilerSimulation, T> f)
                     where T : class
-                    => FromComponent(BoilerSimulation.Instance, f);
+                    => car => Option<ExtraState>.Of(ExtraState.Instance(car))
+                        .Map(state => state.boilerState)
+                        .Map(f).ToNullable();
 
                 RegisterPull(
                     "Water temperature",

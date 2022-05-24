@@ -22,13 +22,23 @@ namespace DvMod.SteamCutoff
         // SimComponent SandFlow { get; }
         // SimComponent SandValve { get; }
         SimComponent TenderWater { get; }
-        // SimComponent TenderCoal { get; }
+        SimComponent TenderCoal { get; }
 
         float CoalConsumptionRate { get; set; }
         float TotalCoalConsumed { get; set; }
         float GetBlowerBonusNormalized();
         float TimeMult { get; }
         float PressureLeakMultiplier { get; set; }
+    }
+
+    public static class SimAdapter
+    {
+        public static ISimAdapter? From(TrainCar car)
+        {
+            if (car.GetComponent<SteamLocoSimulation>() is SteamLocoSimulation baseSim)
+                return new BaseSimAdapter(baseSim);
+            return null;
+        }
     }
 
     public class BaseSimAdapter : ISimAdapter

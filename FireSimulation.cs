@@ -5,28 +5,12 @@ namespace DvMod.SteamCutoff
 {
     public class FireState
     {
-        private static readonly Dictionary<SteamLocoSimulation, FireState> states = new Dictionary<SteamLocoSimulation, FireState>();
-        public static FireState Instance(SteamLocoSimulation sim)
-        {
-            if (states.TryGetValue(sim, out var state))
-                return state;
-            return states[sim] = new FireState(sim);
-        }
-
-        public static FireState? Instance(TrainCar car)
-        {
-            var sim = car.GetComponent<SteamLocoSimulation>();
-            if (sim != null)
-                return Instance(sim);
-            return null;
-        }
-
-        public FireState(SteamLocoSimulation sim)
+        public FireState(ISimAdapter sim)
         {
             this.sim = sim;
         }
 
-        private readonly SteamLocoSimulation sim;
+        private readonly ISimAdapter sim;
 
         private const float CarbonAtomicWeight = 12.011f;
         private const float OxygenAtomicWeight = 15.999f;
@@ -59,7 +43,7 @@ namespace DvMod.SteamCutoff
         private static readonly float ChunkTotalSurfaceArea = PiecesPerChunk * Mathf.Pow(ChunkRadius, 2) * 4 * Mathf.PI;
 
         /// <summary>Coal surface area in m^2.</summary>
-        public float TotalSurfaceArea() => sim.coalbox.value / CoalChunkMass * ChunkTotalSurfaceArea;
+        public float TotalSurfaceArea() => sim.Coalbox.value / CoalChunkMass * ChunkTotalSurfaceArea;
         /// <summary>Coal consumption rate in kg/s with unlimited oxygen.</summary>
         public float MaxCoalConsumptionRate() => MaxConsumptionRatePerArea() * TotalSurfaceArea();
         /// <summary>Maximum oxygen consumption in kg/s.</summary>

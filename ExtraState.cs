@@ -4,20 +4,33 @@ namespace DvMod.SteamCutoff
 {
     public class ExtraState
     {
-        private static readonly ConditionalWeakTable<SteamLocoSimulation, ExtraState> states = new ConditionalWeakTable<SteamLocoSimulation, ExtraState>();
+        private static readonly ConditionalWeakTable<TrainCar, ExtraState> states = new ConditionalWeakTable<TrainCar, ExtraState>();
 
-        public static ExtraState Instance(SteamLocoSimulation sim)
+        public static ExtraState? Instance(TrainCar car)
         {
-            if (!states.TryGetValue(sim, out var state))
+            if (!states.TryGetValue(car, out var state))
             {
-                state = new ExtraState();
-                states.Add(sim, state);
+                var baseSim = car.GetComponent<SteamLocoSimulation>();
+                if (baseSim == null)
+                    return null;
+                state = new ExtraState(new BaseSimAdapter(baseSim), car);
+                states.Add(car, state);
             }
             return state;
         }
 
+        private ExtraState(ISimAdapter sim, TrainCar car)
+        {
+            this.boilerState = new BoilerSimulation(sim, car);
+            this.controlState = new ControlState();
+            this.fireState = new FireState(sim);
+        }
+
         public const int NumCylinders = 2;
 
+        public readonly BoilerSimulation boilerState;
+        public readonly ControlState controlState;
+        public readonly FireState fireState;
         public float powerVel;
         // <summary>Whether a chamber (front/back of cylinder) has been pressurized.</summary>
         public bool[] cylinderFrontHasPressure = new bool[NumCylinders];

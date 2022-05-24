@@ -10,32 +10,16 @@ namespace DvMod.SteamCutoff
     public static class Stoker
     {
         private const float MaxFiringRate = 2.0f; // in kg/s, ~= 225 lb/h/ft^2 grate area on 70 ft^2 grate (PRR L1s)
-        [HarmonyPatch(typeof(SteamLocoSimulation), nameof(SteamLocoSimulation.SimulateTick))]
-        public static class SimulateTickPatch
+        public static void Simulate(ISimAdapter sim, TrainCar loco, ExtraState extraState, float delta)
         {
-            private static AudioClip[]? chuffClips;
-            private static void PlayStokerChuff(Transform transform, float volume)
+            var state = extraState.controlState;
+            var rate = sim.BoilerPressure.value / Main.settings.safetyValveThreshold * state.stokerSetting; // ratio 0-1
+            var firingRate = MaxFiringRate * Mathf.Pow(rate, 2); // in kg/s
+            HeadsUpDisplayBridge.instance?.UpdateStokerFeedRate(loco, firingRate);
+            sim.TenderCoal.PassValueTo(sim.Coalbox, firingRate * delta);
+            if (sim.FireOn.value == 0f && sim.Temperature.value > 400f)
             {
-                (chuffClips ??= Component.FindObjectOfType<LocoAudioSteam>().cylClipsSlow).Play(
-                    position: transform.position,
-                    volume: volume,
-                    maxDistance: 5f,
-                    mixerGroup: AudioManager.e.cabGroup,
-                    parent: transform);
-            }
-
-            public static void Postfix(SteamLocoSimulation __instance, float delta)
-            {
-                var car = TrainCar.Resolve(__instance.gameObject);
-                var state = ExtraControlState.Instance(__instance);
-                var rate = __instance.boilerPressure.value / Main.settings.safetyValveThreshold * state.stokerSetting; // ratio 0-1
-                var firingRate = MaxFiringRate * Mathf.Pow(rate, 2); // in kg/s
-                HeadsUpDisplayBridge.instance?.UpdateStokerFeedRate(car, firingRate);
-                __instance.tenderCoal.PassValueTo(__instance.coalbox, firingRate * delta / __instance.timeMult);
-                if (__instance.fireOn.value == 0f && __instance.temperature.value > 400f)
-                {
-                    __instance.fireOn.SetValue(1f);
-                }
+                sim.FireOn.SetValue(1f);
             }
         }
     }

@@ -40,18 +40,11 @@ namespace DvMod.SteamCutoff
             }
         }
     }
-    public class ExtraControlState
+
+    public class ControlState
     {
         public float stokerSetting;
         public float fireOutSetting;
-
-        private static readonly Dictionary<SteamLocoSimulation, ExtraControlState> states = new Dictionary<SteamLocoSimulation, ExtraControlState>();
-        public static ExtraControlState Instance(SteamLocoSimulation sim)
-        {
-            if (!states.TryGetValue(sim, out var state))
-                states[sim] = state = new ExtraControlState();
-            return state;
-        }
     }
 
     [HarmonyPatch(typeof(CabInputSteamExtra), nameof(CabInputSteamExtra.OnEnable))]
@@ -61,7 +54,7 @@ namespace DvMod.SteamCutoff
         {
             while (!__instance.ctrl || !__instance.ctrl.sim)
                 yield return WaitFor.SecondsRealtime(1f);
-            var state = ExtraControlState.Instance(__instance.ctrl.sim);
+            var state = ExtraState.Instance(TrainCar.Resolve(__instance.gameObject))!.controlState;
             var stokerCtrl = __instance.transform.Find("C valve controller/C valve 3").GetComponent<ControlImplBase>();
             stokerCtrl.SetValue(state.stokerSetting);
             stokerCtrl.ValueChanged += e => state.stokerSetting = e.newValue;
