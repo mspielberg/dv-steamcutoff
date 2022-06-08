@@ -186,7 +186,8 @@ namespace DvMod.SteamCutoff
         public const float BlowerMaxRate = 20f;
         public static void SimulateFire(ISimAdapter sim, TrainCar loco, ExtraState extraState, float deltaTime)
         {
-            float cylinderMassFlow = CylinderSimulation.CylinderSteamMassFlow(sim);
+            float cylinderMassFlow = CylinderSimulation.CylinderSteamMassFlow(sim)
+                * Main.settings.steamConsumptionMultiplier * 0.7f;
             float blowerMassFlow = sim.GetBlowerBonusNormalized() * BlowerMaxRate;
             sim.BoilerPressure.AddNextValue(
                 -blowerMassFlow * deltaTime /
