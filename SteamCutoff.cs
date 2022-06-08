@@ -78,9 +78,9 @@ namespace DvMod.SteamCutoff
             return true;
         }
 
-        private static float BoilerSteamVolume(float boilerWater)
+        private static float BoilerSteamVolume(ISimAdapter sim)
         {
-            return (SteamLocoSimulation.BOILER_WATER_CAPACITY_L * 1.05f) - boilerWater;
+            return (sim.BoilerWater.max * 1.05f) - sim.BoilerWater.value;
         }
 
         public static void DebugLog(string message)
@@ -191,7 +191,7 @@ namespace DvMod.SteamCutoff
             sim.BoilerPressure.AddNextValue(
                 -blowerMassFlow * deltaTime /
                 SteamTables.SteamDensity(sim.BoilerPressure.value) /
-                BoilerSteamVolume(sim.BoilerWater.value));
+                BoilerSteamVolume(sim));
 
             var exhaustFlow = cylinderMassFlow + blowerMassFlow;
             HeadsUpDisplayBridge.instance?.UpdateExhaustFlow(loco, exhaustFlow);
@@ -287,7 +287,7 @@ namespace DvMod.SteamCutoff
                     sim.BoilerPressure.AddNextValue(
                         -normalizedRate * settings.safetyValveVentRate * deltaTime /
                         SteamTables.SteamDensity(sim.BoilerPressure.value) /
-                        BoilerSteamVolume(sim.BoilerWater.value));
+                        BoilerSteamVolume(sim));
                 }
             }
 
@@ -355,7 +355,7 @@ namespace DvMod.SteamCutoff
                 Mathf.InverseLerp(0f, 0.8f, CylinderSimulation.ResidualPressureRatio(cutoff)));
             chuff.ChuffPower = residualPressureRatio * steamChestPressureRatio;
 
-            float boilerSteamVolume = BoilerSteamVolume(sim.BoilerWater.value);
+            float boilerSteamVolume = BoilerSteamVolume(sim);
             float boilerSteamMass = boilerSteamVolume * SteamTables.SteamDensity(sim);
             float steamMassConsumed =
                 Main.settings.steamConsumptionMultiplier
