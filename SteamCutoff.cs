@@ -221,7 +221,7 @@ namespace DvMod.SteamCutoff
         {
             var injector = Mathf.Pow(sim.Injector.value, Constants.InjectorGamma);
 
-            var waterVolumeRequested = 30000f * injector * deltaTime;
+            var waterVolumeRequested = sim.MaxInjectorRate * injector * deltaTime;
             var waterVolumeToExtract = Mathf.Min(
                 waterVolumeRequested * Main.settings.waterConsumptionMultiplier,
                 sim.TenderWater.value);

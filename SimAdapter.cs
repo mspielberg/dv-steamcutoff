@@ -32,6 +32,7 @@ namespace DvMod.SteamCutoff
         float CoalConsumptionRate { get; set; }
         float TotalCoalConsumed { get; set; }
         float GetBlowerBonusNormalized();
+        float MaxInjectorRate { get; }
         float TimeMult { get; }
         float PressureLeakMultiplier { get; set; }
     }
@@ -105,6 +106,7 @@ namespace DvMod.SteamCutoff
         }
 
         public float GetBlowerBonusNormalized() => baseSim.GetBlowerBonusNormalized();
+        public float MaxInjectorRate => SteamLocoSimulation.INJECTOR_STREAM_L;
         public float TimeMult => baseSim.timeMult;
 
         public float PressureLeakMultiplier
@@ -158,6 +160,7 @@ namespace DvMod.SteamCutoff
         }
 
         public float GetBlowerBonusNormalized() => customSim.GetBlowerFlowPercent();
+        public float MaxInjectorRate => customSim.simParams.InjectorMaxFlowLPS;
         public float TimeMult => customSim.timeMult;
 
         public float PressureLeakMultiplier
