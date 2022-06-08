@@ -15,12 +15,8 @@ namespace DvMod.SteamCutoff
         public static float SteamChestPressure(ISimAdapter sim) => sim.BoilerPressure.value * sim.Regulator.value;
         public static float Cutoff(ISimAdapter sim) =>
             Mathf.Max(Constants.MinCutoff, Mathf.Pow(sim.Cutoff.value, Constants.CutoffGamma) * Constants.MaxCutoff);
-        // 4 strokes / revolution
-        // 4.4m driver circumference (see ChuffController)
-        // ~909 strokes / km
-        // (~0.25 strokes / s) / (km/h)
         public static float CylinderSteamVolumetricFlow(ISimAdapter sim) =>
-            sim.Speed.value * 0.25f * CylinderVolume * Cutoff(sim);
+            sim.Speed.value * sim.SteamConsumptionMultiplier * Cutoff(sim);
         public static float CylinderSteamMassFlow(ISimAdapter sim) =>
             sim.Regulator.value == 0 ? 0 : CylinderSteamVolumetricFlow(sim) * SteamTables.SteamDensity(SteamChestPressure(sim));
 

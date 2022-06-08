@@ -33,6 +33,7 @@ namespace DvMod.SteamCutoff
         float TotalCoalConsumed { get; set; }
         float GetBlowerBonusNormalized();
         float MaxInjectorRate { get; }
+        float SteamConsumptionMultiplier { get; }
         float TimeMult { get; }
         float PressureLeakMultiplier { get; set; }
     }
@@ -107,6 +108,12 @@ namespace DvMod.SteamCutoff
 
         public float GetBlowerBonusNormalized() => baseSim.GetBlowerBonusNormalized();
         public float MaxInjectorRate => SteamLocoSimulation.INJECTOR_STREAM_L;
+        private const float CylinderVolume = 282f; // PRR L1s: 27x30"
+        // 4 strokes / revolution
+        // 4.4m driver circumference (see ChuffController)
+        // ~909 strokes / km
+        // (~0.25 strokes / s) / (km/h)
+        public float SteamConsumptionMultiplier => 0.25f * CylinderVolume;
         public float TimeMult => baseSim.timeMult;
 
         public float PressureLeakMultiplier
@@ -161,6 +168,7 @@ namespace DvMod.SteamCutoff
 
         public float GetBlowerBonusNormalized() => customSim.GetBlowerFlowPercent();
         public float MaxInjectorRate => customSim.simParams.InjectorMaxFlowLPS;
+        public float SteamConsumptionMultiplier => customSim.simParams.SteamPipeMultiplier * 25f;
         public float TimeMult => customSim.timeMult;
 
         public float PressureLeakMultiplier
