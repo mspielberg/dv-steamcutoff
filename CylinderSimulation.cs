@@ -10,8 +10,6 @@ namespace DvMod.SteamCutoff
         private const float SteamAdiabaticIndex = 1.33f;
         private const float MinSteamTemperature_K = 380.0f;
 
-        public const float CylinderVolume = 282f; // PRR L1s: 27x30"
-        public const float DriverCircumference = 4.4f; // see ChuffController
         public static float SteamChestPressure(ISimAdapter sim) => sim.BoilerPressure.value * sim.Regulator.value;
         public static float Cutoff(ISimAdapter sim) =>
             Mathf.Max(Constants.MinCutoff, Mathf.Pow(sim.Cutoff.value, Constants.CutoffGamma) * Constants.MaxCutoff);
