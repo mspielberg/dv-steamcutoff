@@ -79,7 +79,7 @@ namespace DvMod.SteamCutoff
         private const float CoalCompositionCarbon = 0.6f;
         private const float CoalCompositionVolatile = 0.3f;
         private const float CarbonSpecificEnthalpy = 32.81e3f; // kJ/kg
-        private const float VolatileSpecificEnthalpy = 42.93f; // kJ/kg
+        private const float VolatileSpecificEnthalpy = 42.93e3f; // kJ/kg
 
         private const float CoalSpecificEnergy =
             (CoalCompositionCarbon * CarbonSpecificEnthalpy)
