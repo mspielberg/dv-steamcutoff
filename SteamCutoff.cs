@@ -105,6 +105,35 @@ namespace DvMod.SteamCutoff
             }
         }
 
+        [HarmonyPatch]
+        public static class CCLAwakePatch
+        {
+            public static bool Prepare()
+            {
+                return UnityModManager.FindMod("DVCustomCarLoader")?.Loaded ?? false;
+            }
+
+            public static MethodBase TargetMethod()
+            {
+                return UnityModManager.FindMod("DVCustomCarLoader").Assembly
+                    .GetType("DVCustomCarLoader.LocoComponents.Steam.CustomLocoSimSteam")
+                    .GetMethod("Awake", BindingFlags.NonPublic | BindingFlags.Instance);
+            }
+
+            public static void Postfix(object __instance)
+            {
+                Inner.Execute(__instance);
+            }
+
+            private static class Inner
+            {
+                public static void Execute(object __instance)
+                {
+                    ((CustomLocoSimSteam)__instance).boilerPressure.value = Main.settings.initialBoilerPressure;
+                }
+            }
+        }
+
         [HarmonyPatch(typeof(SteamLocoSimulation), nameof(SteamLocoSimulation.SimulateTick))]
         public static class SimulateTickPatch
         {
