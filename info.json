@@ -2,7 +2,7 @@
   "Id": "SteamCutoff",
   "DisplayName": "Realistic Steamer Overhaul",
   "Author": "Zeibach",
-  "Version": "0.11.0",
+  "Version": "0.12.0",
   "LoadAfter": ["HeadsUpDisplay"],
   "AssemblyName": "SteamCutoff.dll",
   "EntryMethod": "DvMod.SteamCutoff.Main.Load",
