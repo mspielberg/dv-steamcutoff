@@ -251,16 +251,17 @@ namespace DvMod.SteamCutoff
         {
             var injector = Mathf.Pow(sim.Injector.value, Constants.InjectorGamma);
 
-            var waterVolumeRequested = sim.MaxInjectorRate * injector * deltaTime;
+            var waterVolumeRequested = sim.MaxInjectorRate * injector * deltaTime * sim.TimeMult;
             var waterVolumeToExtract = Mathf.Min(
                 waterVolumeRequested * Main.settings.waterConsumptionMultiplier,
                 sim.TenderWater.value);
             sim.TenderWater.AddNextValue(-waterVolumeToExtract);
             sim.BoilerWater.AddNextValue(waterVolumeToExtract / Main.settings.waterConsumptionMultiplier);
-            sim.BoilerWater.AddNextValue(-40000f * sim.WaterDump.value * deltaTime);
+            sim.BoilerWater.AddNextValue(
+                -SteamLocoSimulation.WATER_DUMP_STREAM_L * sim.WaterDump.value
+                    * deltaTime * sim.TimeMult);
         }
 
-        private const float PASSIVE_LEAK_ADJUST = 0.1f;
         private const float SafetyValveBlowoff = 0.35f; // 5 psi
         private const float SafetyValveOffset = 0.15f;
 
@@ -339,15 +340,19 @@ namespace DvMod.SteamCutoff
 
             // steam release
             if (sim.SteamReleaser.value > 0.0f && sim.BoilerPressure.value > 0.0f)
-                sim.BoilerPressure.AddNextValue(-sim.SteamReleaser.value * 30.0f * deltaTime);
+            {
+                sim.BoilerPressure.AddNextValue(
+                    -sim.SteamReleaser.value * SteamLocoSimulation.STEAM_RELEASER_STREAM_KG_PER_SQR_CM_PER_S
+                        * deltaTime * sim.TimeMult);
+            }
 
             SimulateSafetyValve(sim, extraState.boilerState, deltaTime);
 
             // passive leakage
             sim.PressureLeakMultiplier = Mathf.Lerp(
-                1f, 100f / PASSIVE_LEAK_ADJUST,
+                1f, 100f,
                 Mathf.InverseLerp(0.7f, 1f, damageController.bodyDamage.DamagePercentage));
-            float leakage = PASSIVE_LEAK_ADJUST * SteamLocoSimulation.PRESSURE_LEAK_L * sim.PressureLeakMultiplier * deltaTime;
+            float leakage = SteamLocoSimulation.PRESSURE_LEAK_L * sim.PressureLeakMultiplier * deltaTime * sim.TimeMult;
             sim.BoilerPressure.AddNextValue(-leakage);
         }
 
