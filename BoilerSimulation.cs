@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace DvMod.SteamCutoff
@@ -42,54 +41,48 @@ namespace DvMod.SteamCutoff
             float evaporatedMassLimit = excessEnergy / boilOffEnergy;
 
             // output variables
-            float evaporatedMass;
-            float newWaterLevel;
-            float newSteamPressure = boilerPressure;  // satisfy the compiler; overwritten below
+            float evaporatedMass = 0.5f * evaporatedMassLimit;
+            float newWaterLevel = sim.BoilerWater.value;
+            float newSteamPressure = boilerPressure;
 
-            if (boilerPressure < 0.05f)
+            float initialSteamMass = currentSteamMass;
+            float initialWaterMass = currentWaterMass;
+            float initialWaterTemp = WaterTemp;
+
+            // binary search on actual evaporated mass to remain on the saturation curve
+            float minEvaporatedMass = Mathf.Min(0f, evaporatedMassLimit);
+            float maxEvaporatedMass = Mathf.Max(0f, evaporatedMassLimit);
+            for (int i = 0; i < 20; i++)
             {
-                WaterTemp = boilingTemp;
-                evaporatedMass = heatEnergyFromCoal / boilOffEnergy;
-                currentWaterMass -= evaporatedMass;
+                currentWaterMass = initialWaterMass - evaporatedMass;
+                currentSteamMass = initialSteamMass + evaporatedMass;
+
+                float evaporationEnergy = evaporatedMass * boilOffEnergy;
+                WaterTemp = initialWaterTemp + ((heatEnergyFromCoal - evaporationEnergy) / heatCapacity);
                 newWaterLevel = currentWaterMass / SteamTables.WaterDensityByTemp(WaterTemp);
 
-                currentSteamMass += evaporatedMass;
                 newSteamPressure = IdealGasSteam.Pressure(currentSteamMass, WaterTemp, BoilerSteamVolume(newWaterLevel));
-            }
-            else
-            {
-                float initialSteamMass = currentSteamMass;
-                float initialWaterMass = currentWaterMass;
-                float initialWaterTemp = WaterTemp;
-                float initialWaterDensity = SteamTables.WaterDensityByTemp(WaterTemp);
 
-                // binary search on actual evaporated mass to remain on the saturation curve
-                float minEvaporatedMass = Mathf.Min(0f, evaporatedMassLimit);
-                float maxEvaporatedMass = Mathf.Max(0f, evaporatedMassLimit);
-                evaporatedMass = 0.5f * evaporatedMassLimit;
-                for (int i = 0; i < 10; i++)
+                if (maxEvaporatedMass - minEvaporatedMass <= 0.01f * Mathf.Abs(evaporatedMass))
                 {
-                    currentWaterMass = initialWaterMass - evaporatedMass;
-                    currentSteamMass = initialSteamMass + evaporatedMass;
-
-                    float evaporationEnergy = evaporatedMass * boilOffEnergy;
-                    WaterTemp = initialWaterTemp + ((heatEnergyFromCoal - evaporationEnergy) / heatCapacity);
-                    newWaterLevel = currentWaterMass / initialWaterDensity; // approximation, compensate after loop
-
-                    newSteamPressure = IdealGasSteam.Pressure(currentSteamMass, WaterTemp, BoilerSteamVolume(newWaterLevel));
-
-                    if (maxEvaporatedMass - minEvaporatedMass <= 0.01f * Mathf.Abs(evaporatedMass))
-                        break;
-
-                    if (WaterTemp < SteamTables.BoilingPoint(newSteamPressure))
-                        maxEvaporatedMass = evaporatedMass;
-                    else
-                        minEvaporatedMass = evaporatedMass;
-                    evaporatedMass = (minEvaporatedMass + maxEvaporatedMass) / 2f;
+                    // Main.DebugLog(loco, () => $"early exit after {i} iteration(s): evaporatedMass={evaporatedMass}");
+                    break;
                 }
 
-                // reflect density change with temperature
-                newWaterLevel = currentWaterMass / SteamTables.WaterDensityByTemp(WaterTemp);
+                if (WaterTemp < SteamTables.BoilingPoint(newSteamPressure))
+                {
+                    maxEvaporatedMass = evaporatedMass;
+                }
+                else
+                {
+                    minEvaporatedMass = evaporatedMass;
+                }
+
+                evaporatedMass = (minEvaporatedMass + maxEvaporatedMass) / 2f;
+                if (i >= 99)
+                {
+                    // Main.DebugLog(loco, () => $"BoilerSimulation.Update reached {i} iterations");
+                }
             }
 
             SmoothedEvapRate = Mathf.SmoothDamp(
