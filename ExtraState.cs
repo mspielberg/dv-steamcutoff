@@ -24,17 +24,22 @@ namespace DvMod.SteamCutoff
             this.boilerState = new BoilerSimulation(sim, car);
             this.controlState = new ControlState();
             this.fireState = new FireState(sim);
+
+            this.NumCylinders = sim.NumCylinders;
+
+            this.cylinderFrontHasPressure = new bool[NumCylinders];
+            this.cylinderRearHasPressure = new bool[NumCylinders];
         }
 
-        public const int NumCylinders = 2;
+        public readonly int NumCylinders = 2;
 
         public readonly BoilerSimulation boilerState;
         public readonly ControlState controlState;
         public readonly FireState fireState;
         public float powerVel;
         // <summary>Whether a chamber (front/back of cylinder) has been pressurized.</summary>
-        public bool[] cylinderFrontHasPressure = new bool[NumCylinders];
-        public bool[] cylinderRearHasPressure = new bool[NumCylinders];
+        public bool[] cylinderFrontHasPressure;
+        public bool[] cylinderRearHasPressure;
         public ref bool IsCylinderPressurized(int cylinder, bool isFront)
         {
             return ref (isFront ? cylinderFrontHasPressure : cylinderRearHasPressure)[cylinder];
