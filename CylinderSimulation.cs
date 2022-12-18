@@ -41,7 +41,7 @@ namespace DvMod.SteamCutoff
             float rotation,
             ExtraState state)
         {
-            var (pistonPosition, isFrontActive, crankOffset) = PistonLinearPosition(cylinder, totalCylinders: 2, rotation);
+            var (pistonPosition, isFrontActive, crankOffset) = PistonLinearPosition(cylinder, state.NumCylinders, rotation);
             ref bool intakeHasSteam = ref state.IsCylinderPressurized(cylinder, isFrontActive);
             ref bool exhaustHasSteam = ref state.IsCylinderPressurized(cylinder, !isFrontActive);
 
@@ -85,9 +85,9 @@ namespace DvMod.SteamCutoff
             ExtraState extraState)
         {
             float totalPower = 0f;
-            for (int cylinder = 0; cylinder < ExtraState.NumCylinders; cylinder++)
+            for (int cylinder = 0; cylinder < extraState.NumCylinders; cylinder++)
                 totalPower += InstantaneousCylinderPowerRatio(cutoff, maxExpansionRatio, cylinder, rotation, extraState);
-            return totalPower / ExtraState.NumCylinders;
+            return totalPower / extraState.NumCylinders;
         }
 
         public static float PowerRatio(float regulator, float cutoff, float revolution,

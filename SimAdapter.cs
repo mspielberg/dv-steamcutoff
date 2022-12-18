@@ -36,6 +36,7 @@ namespace DvMod.SteamCutoff
         float SteamConsumptionMultiplier { get; }
         float TimeMult { get; }
         float PressureLeakMultiplier { get; set; }
+        int NumCylinders { get; }
     }
 
     public static class SimAdapter
@@ -121,6 +122,8 @@ namespace DvMod.SteamCutoff
             get => baseSim.pressureLeakMultiplier;
             set => baseSim.pressureLeakMultiplier = value;
         }
+
+        public int NumCylinders => 2;
     }
 
     public class CustomSimAdapter : ISimAdapter
@@ -176,5 +179,7 @@ namespace DvMod.SteamCutoff
             get => customSim.pressureLeakMultiplier;
             set => customSim.pressureLeakMultiplier = value;
         }
+
+        public int NumCylinders => customSim.simParams.NumberOfCylinders;
     }
 }

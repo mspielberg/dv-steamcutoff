@@ -38,8 +38,8 @@ namespace DvMod.SteamCutoff
         }
 
         public float DriverCircumference => chuff.wheelCircumference;
-        public float CurrentRevolution => chuff.revolutionPos / chuff.wheelCircumference;
-        public float RotationSpeed => chuff.driverAnimation.defaultRotationSpeed / 2f / Mathf.PI;
+        public float CurrentRevolution => chuff.revolutionPos;
+        public float RotationSpeed => chuff.driverAnimation.defaultRotationSpeed;
         public float ChuffPower { set => chuff.chuffPower = value; }
     }
 }
